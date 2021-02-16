@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cmath>
+#include <time.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
@@ -12,7 +13,7 @@ compile (cause pkg-config is annoying): g++ -std=c++11 sobel.cpp -o sobel `pkg-c
 run: ./sobel <input image>
 */
 
-Mat preprocessing(char *filename)
+std::vector<Mat> preprocessing(char *filename)
 {
     /*
     Apply preprocessing:
@@ -22,6 +23,8 @@ Mat preprocessing(char *filename)
       - pad the image with a 1px border of 0s for the sobel filter
     */
 
+    std::vector<Mat> input_images;
+
     // read in image as grayscale
     // Mat is an OpenCV data structure
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
@@ -29,7 +32,7 @@ Mat preprocessing(char *filename)
     if (raw_image.empty())
     {
         std::cout << "Could not read image: " << filename << std::endl;
-        return raw_image;
+        return input_images;
     }
 
     // convert image to CV_32F (equivalent to a float)
@@ -43,7 +46,26 @@ Mat preprocessing(char *filename)
     Mat padded_image;
     copyMakeBorder(image, padded_image, 1, 1, 1, 1, BORDER_CONSTANT, 0);
 
-    return padded_image;
+    input_images.push_back(padded_image);
+
+    Mat prev_img = image;
+    for (int i = 0; i < 6; i++)
+    {
+        // resize the previous image by a quarter
+        Mat resized_img;
+        resize(prev_img, resized_img, Size(), 0.5, 0.5);
+
+        // pad with 1px of 0s
+        Mat padded_image;
+        copyMakeBorder(resized_img, padded_image, 1, 1, 1, 1, BORDER_CONSTANT, 0);
+
+        // append to vector
+        input_images.push_back(padded_image);
+
+        prev_img = resized_img;
+    }
+
+    return input_images;
 }
 
 Mat sobel(Mat padded_image)
@@ -102,21 +124,31 @@ int main(int argc, char **argv)
 
     if (argc != 2)
     {
-        std::cout << "Usage: sobel <input image" << std::endl;
+        std::cout << "Usage: sobel <input image>" << std::endl;
         return 0;
     }
 
-    Mat padded_img = preprocessing(argv[1]);
+    std::vector<Mat> input_images = preprocessing(argv[1]);
 
-    if (padded_img.empty())
+    if (input_images.size() == 0)
     {
         return 1;
     }
 
-    Mat sobel_img = sobel(padded_img);
+    std::vector<Mat> sobel_images;
 
-    imshow("Detected Edges", sobel_img);
-    waitKey(0);
+    for (int i = 0; i < input_images.size(); i++)
+    {
+        clock_t start = clock();
+        Mat sobel_img = sobel(input_images[i]);
+        clock_t end = clock();
+        std::cout << "size: " << input_images[i].size() << " execution time : " << (end - start) << "ms" << std::endl;
+
+        sobel_images.push_back(sobel_img);
+    }
+
+    // imshow("Detected Edges", sobel_images[1]);
+    // waitKey(0);
 
     return 0;
 }
