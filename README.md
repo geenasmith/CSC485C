@@ -9,6 +9,7 @@ Project and course work
 wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
 unzip opencv.zip
 mkdir -p build && cd build
+mkdir /home/**your_username**/local
 cmake -D CMAKE_INSTALL_PREFIX='/home/**your_username**/local' ..
 cmake  ../opencv-master
 cmake --build .
