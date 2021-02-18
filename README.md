@@ -13,6 +13,7 @@ mkdir /home/**your_username**/local
 cmake -D CMAKE_INSTALL_PREFIX='/home/**your_username**/local' ..
 cmake  ../opencv-master
 cmake --build .
+// The following two commands need to be run every time you remotely connect to the lab computer
 export LD_LIBRARY_PATH=/home/**your_username**/local/lib
 export PKG_CONFIG_PATH=**path_to_CSC485C_repo**/pkgconfig
 ```
