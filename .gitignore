@@ -35,3 +35,6 @@ project/sobel
 # Dev stuff
 *DS_Store
 *vscode
+
+# Google benchmark
+benchmark/
