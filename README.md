@@ -13,7 +13,7 @@ cmake -D CMAKE_INSTALL_PREFIX='/home/**your_username**/local' ..
 cmake  ../opencv-master
 cmake --build .
 export LD_LIBRARY_PATH=/home/**your_username**/local/lib
-export PKG_CONFIG_PATH=path_to_CSC485C_repo/pkgconfig
+export PKG_CONFIG_PATH=**path_to_CSC485C_repo**/pkgconfig
 ```
 
 Modify the prefix in opencv.pc under pkgconfig to 
@@ -35,5 +35,5 @@ cmake --build "build" --config Release
 Update the **path_to_benchmark** before use
 
 ```
-g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv` -isystem {path_to_benchmark}/include -L{path_to_benchmark}/build/src -lbenchmark -lpthread
+g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv` -isystem **path_to_benchmark**/include -L**path_to_benchmark**/build/src -lbenchmark -lpthread
 ```
