@@ -1,7 +1,5 @@
 # CSC485C
 Project and course work
-# CSC485C
-Project and course work
 
 ## Install opencv and Google benchmark on lab computer
 
