@@ -1,9 +1,9 @@
 # CSC485C
 Project and course work
 
-## Install opencv and Google benchmark on lab computer
+## Install OpenCV and Google benchmark without sudo
 
-### Install opencv
+### Install OpenCV
 
 ```
 wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
@@ -16,7 +16,7 @@ export LD_LIBRARY_PATH=/home/**your_username**/local/lib
 export PKG_CONFIG_PATH=path_to_CSC485C_repo/pkgconfig
 ```
 
-Modify opencv.pc in pkgconfig: change prefix to 
+Modify the prefix in opencv.pc under pkgconfig to 
 > /home/**your_username**/local
 
 
