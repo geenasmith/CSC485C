@@ -110,9 +110,10 @@ Mat sobel_array(Mat padded_image)
     // Filtered image definitions
     int n_rows = padded_image.rows - 1;
     int n_cols = padded_image.cols - 1;
-    Mat sobel_image(n_rows, n_cols, CV_32F);
+	
+    float sobel_array[n_rows][n_cols];
 
-    // convert Mat to 2d array
+    // Use array to store the image value
     float imageArr[padded_image.rows][padded_image.cols];
 
     for(int i = 0 ;i < padded_image.rows; ++i)
@@ -145,11 +146,14 @@ Mat sobel_array(Mat padded_image)
                           imageArr[r+2][c+1] * g_y[2][1] +
                           imageArr[r+2][c+2] * g_y[2][2];
 
-            sobel_image.at<float>(r, c) = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+			// Instead of Mat, store the value into an array
+			sobel_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
         }
     }
 
-    // normalize to 0-255
+	// Convert array to Mat, base on documentation, this function only create a header that points to the data 
+	Mat sobel_image = Mat(n_rows, n_cols, CV_64F, sobel_array);
+
     normalize(sobel_image, sobel_image, 0, 255, NORM_MINMAX, CV_8UC1);
     
     return sobel_image;
