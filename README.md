@@ -8,14 +8,15 @@ Project and course work
 ```
 wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
 unzip opencv.zip
+cd opencv-master
 mkdir -p build && cd build
-mkdir /home/**your_username**/local
-cmake -D CMAKE_INSTALL_PREFIX='/home/**your_username**/local' ..
-cmake  ../opencv-master
+mkdir $HOME/local
+cmake -D CMAKE_INSTALL_PREFIX="$HOME/local" ..
+cmake  ..
 cmake --build .
 // The following two commands need to be run every time you remotely connect to the lab computer
-export LD_LIBRARY_PATH=/home/**your_username**/local/lib
-export PKG_CONFIG_PATH=**path_to_CSC485C_repo**/pkgconfig
+echo "export LD_LIBRARY_PATH=$HOME/local/lib" >> ~/.bashrc
+echo "export PKG_CONFIG_PATH=$HOME/CSC485C/pkgconfig" >> ~/.bashrc
 ```
 
 Modify the prefix in opencv.pc under pkgconfig to 
@@ -24,6 +25,7 @@ Modify the prefix in opencv.pc under pkgconfig to
 
 ### Install Google Benchmark
 ```
+cd ~
 git clone https://github.com/google/benchmark.git
 git clone https://github.com/google/googletest.git benchmark/googletest
 cd benchmark
@@ -37,5 +39,5 @@ cmake --build "build" --config Release
 Update the **path_to_benchmark** before use
 
 ```
-g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv` -isystem **path_to_benchmark**/include -L**path_to_benchmark**/build/src -lbenchmark -lpthread
+g++ -std=c++11 project/sobel.cpp -o sobel `pkg-config --cflags --libs opencv` -isystem $HOME/benchmark/include -L$HOME/benchmark/build/src -lbenchmark -lpthread
 ```

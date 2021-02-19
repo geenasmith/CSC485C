@@ -4,6 +4,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <benchmark/benchmark.h>
 
 using namespace cv;
 
@@ -142,46 +143,51 @@ Mat sobel_array(Mat padded_image)
     return sobel_image;
 }
 
-int main(int argc, char **argv)
-{
 
-    if (argc != 2)
-    {
-        std::cout << "Usage: sobel <input image" << std::endl;
-        return 0;
-    }
+// Calls and runs the benchmark program
+BENCHMARK_MAIN()
+// int main(int argc, char **argv)
+// {
 
-    // read in image as grayscale
-    // Mat is an OpenCV data structure
-    Mat raw_image = imread(argv[1], IMREAD_GRAYSCALE);
+//     if (argc != 2)
+//     {
+//         std::cout << "Usage: sobel <input image" << std::endl;
+//         return 0;
+//     }
 
-    if (raw_image.empty())
-    {
-        std::cout << "Could not read image: " << argv[1] << std::endl;
-        return 1;
-    }
+//     // read in image as grayscale
+//     // Mat is an OpenCV data structure
+//     Mat raw_image = imread(argv[1], IMREAD_GRAYSCALE);
 
-    // convert image to CV_32F (equivalent to a float)
-    Mat image;
-    raw_image.convertTo(image, CV_32F);
+//     if (raw_image.empty())
+//     {
+//         std::cout << "Could not read image: " << argv[1] << std::endl;
+//         return 1;
+//     }
 
-    // ----- Initial Sobel Implementation -----
+//     // convert image to CV_32F (equivalent to a float)
+//     Mat image;
+//     raw_image.convertTo(image, CV_32F);
 
-    Mat orig_padded_img = preprocessing(image);
+//     // ----- Initial Sobel Implementation -----
 
-    Mat orig_sobel_img = sobel(orig_padded_img);
+//     Mat orig_padded_img = preprocessing(image);
 
-    // imshow("Detected Edges", orig_sobel_img);
-    // waitKey(0);
+//     Mat orig_sobel_img = sobel(orig_padded_img);
 
-    // ----- Array Sobel Implementation -----
+//     // imshow("Detected Edges", orig_sobel_img);
+//     // waitKey(0);
 
-    Mat arr_padded_img = preprocessing(image);
+//     // ----- Array Sobel Implementation -----
 
-    Mat arr_sobel_img = sobel_array(arr_padded_img);
+//     Mat arr_padded_img = preprocessing(image);
 
-    imshow("Detected Edges", arr_sobel_img);
-    waitKey(0);
+//     Mat arr_sobel_img = sobel_array(arr_padded_img);
 
-    return 0;
-}
+//     // imshow("Detected Edges", arr_sobel_img);
+//     imwrite("outputs/arroutput.jpg", arr_sobel_img);
+//     imwrite("outputs/sobelout.jpg", orig_sobel_img);
+//     // waitKey(0);
+
+//     return 0;
+// }

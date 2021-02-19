@@ -1,4 +1,4 @@
-prefix=/home/evanguo97/local
+prefix=/home/jasparke/local
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir_old=${prefix}/include/opencv4/opencv
