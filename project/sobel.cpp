@@ -98,11 +98,10 @@ Mat sobel_array(Mat padded_image)
     float sobel_array[n_rows][n_cols];
 
     // Use array to store the image value
-    float imageArr[n_rows][n_cols];
-
+    float padded_array[padded_image.rows][padded_image.cols];
     for (int i = 0; i < padded_image.rows; ++i)
         for (int j = 0; j < padded_image.cols; ++j)
-            imageArr[i][j] = padded_image.at<float>(i, j);
+            padded_array[i][j] = padded_image.at<float>(i, j);
 
     // loop through calculating G_x and G_y
     // mag is sqrt(G_x^2 + G_y^2)
@@ -110,25 +109,25 @@ Mat sobel_array(Mat padded_image)
     {
         for (int c = 0; c < n_cols; c++)
         {
-            float mag_x = imageArr[r][c] * g_x[0][0] +
-                          imageArr[r][c + 1] * g_x[0][1] +
-                          imageArr[r][c + 2] * g_x[0][2] +
-                          imageArr[r + 1][c] * g_x[1][0] +
-                          imageArr[r + 1][c + 1] * g_x[1][1] +
-                          imageArr[r + 1][c + 2] * g_x[1][2] +
-                          imageArr[r + 2][c] * g_x[2][0] +
-                          imageArr[r + 2][c + 1] * g_x[2][1] +
-                          imageArr[r + 2][c + 2] * g_x[2][2];
+            float mag_x = padded_array[r][c] * g_x[0][0] +
+                          padded_array[r][c + 1] * g_x[0][1] +
+                          padded_array[r][c + 2] * g_x[0][2] +
+                          padded_array[r + 1][c] * g_x[1][0] +
+                          padded_array[r + 1][c + 1] * g_x[1][1] +
+                          padded_array[r + 1][c + 2] * g_x[1][2] +
+                          padded_array[r + 2][c] * g_x[2][0] +
+                          padded_array[r + 2][c + 1] * g_x[2][1] +
+                          padded_array[r + 2][c + 2] * g_x[2][2];
 
-            float mag_y = imageArr[r][c] * g_y[0][0] +
-                          imageArr[r][c + 1] * g_y[0][1] +
-                          imageArr[r][c + 2] * g_y[0][2] +
-                          imageArr[r + 1][c] * g_y[1][0] +
-                          imageArr[r + 1][c + 1] * g_y[1][1] +
-                          imageArr[r + 1][c + 2] * g_y[1][2] +
-                          imageArr[r + 2][c] * g_y[2][0] +
-                          imageArr[r + 2][c + 1] * g_y[2][1] +
-                          imageArr[r + 2][c + 2] * g_y[2][2];
+            float mag_y = padded_array[r][c] * g_y[0][0] +
+                          padded_array[r][c + 1] * g_y[0][1] +
+                          padded_array[r][c + 2] * g_y[0][2] +
+                          padded_array[r + 1][c] * g_y[1][0] +
+                          padded_array[r + 1][c + 1] * g_y[1][1] +
+                          padded_array[r + 1][c + 2] * g_y[1][2] +
+                          padded_array[r + 2][c] * g_y[2][0] +
+                          padded_array[r + 2][c + 1] * g_y[2][1] +
+                          padded_array[r + 2][c + 2] * g_y[2][2];
 
             // Instead of Mat, store the value into an array
             sobel_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
@@ -172,8 +171,8 @@ int main(int argc, char **argv)
 
     Mat orig_sobel_img = sobel(orig_padded_img);
 
-    imshow("Detected Edges", orig_sobel_img);
-    waitKey(0);
+    // imshow("Detected Edges", orig_sobel_img);
+    // waitKey(0);
 
     // ----- Array Sobel Implementation -----
 
