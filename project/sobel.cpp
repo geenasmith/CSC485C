@@ -154,7 +154,7 @@ Mat sobel_array(Mat padded_image)
 
 
 // Calls and runs the benchmark program
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
 // int main(int argc, char **argv)
 // {
 
