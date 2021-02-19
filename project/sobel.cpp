@@ -31,12 +31,17 @@ Mat preprocessing(Mat image)
     return padded_image;
 }
 
-static void BENCH_SobelOriginalMatImplementation(benchmark::State& state) {
+/*
+    Initial benchmarking implementation
+      - Uses opencv Mat objects and opencv normalization
+*/
+static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
+{
     // SETUP BENCHMARK
 
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
-    
+
     // convert image to CV_32F (equivalent to a float)
     Mat image;
     input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
@@ -53,31 +58,32 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State& state) {
 
     Mat padded_image = preprocessing(image);
 
-    for (auto _ : state) {
+    for (auto _ : state)
+    {
         Mat output_image(n_rows, n_cols, CV_32F);
         for (int r = 0; r < n_rows; r++)
         {
             for (int c = 0; c < n_cols; c++)
             {
                 float mag_x = padded_image.at<float>(r, c) * g_x[0][0] +
-                            padded_image.at<float>(r, c + 1) * g_x[0][1] +
-                            padded_image.at<float>(r, c + 2) * g_x[0][2] +
-                            padded_image.at<float>(r + 1, c) * g_x[1][0] +
-                            padded_image.at<float>(r + 1, c + 1) * g_x[1][1] +
-                            padded_image.at<float>(r + 1, c + 2) * g_x[1][2] +
-                            padded_image.at<float>(r + 2, c) * g_x[2][0] +
-                            padded_image.at<float>(r + 2, c + 1) * g_x[2][1] +
-                            padded_image.at<float>(r + 2, c + 2) * g_x[2][2];
+                              padded_image.at<float>(r, c + 1) * g_x[0][1] +
+                              padded_image.at<float>(r, c + 2) * g_x[0][2] +
+                              padded_image.at<float>(r + 1, c) * g_x[1][0] +
+                              padded_image.at<float>(r + 1, c + 1) * g_x[1][1] +
+                              padded_image.at<float>(r + 1, c + 2) * g_x[1][2] +
+                              padded_image.at<float>(r + 2, c) * g_x[2][0] +
+                              padded_image.at<float>(r + 2, c + 1) * g_x[2][1] +
+                              padded_image.at<float>(r + 2, c + 2) * g_x[2][2];
 
                 float mag_y = padded_image.at<float>(r, c) * g_y[0][0] +
-                            padded_image.at<float>(r, c + 1) * g_y[0][1] +
-                            padded_image.at<float>(r, c + 2) * g_y[0][2] +
-                            padded_image.at<float>(r + 1, c) * g_y[1][0] +
-                            padded_image.at<float>(r + 1, c + 1) * g_y[1][1] +
-                            padded_image.at<float>(r + 1, c + 2) * g_y[1][2] +
-                            padded_image.at<float>(r + 2, c) * g_y[2][0] +
-                            padded_image.at<float>(r + 2, c + 1) * g_y[2][1] +
-                            padded_image.at<float>(r + 2, c + 2) * g_y[2][2];
+                              padded_image.at<float>(r, c + 1) * g_y[0][1] +
+                              padded_image.at<float>(r, c + 2) * g_y[0][2] +
+                              padded_image.at<float>(r + 1, c) * g_y[1][0] +
+                              padded_image.at<float>(r + 1, c + 1) * g_y[1][1] +
+                              padded_image.at<float>(r + 1, c + 2) * g_y[1][2] +
+                              padded_image.at<float>(r + 2, c) * g_y[2][0] +
+                              padded_image.at<float>(r + 2, c + 1) * g_y[2][1] +
+                              padded_image.at<float>(r + 2, c + 2) * g_y[2][2];
 
                 output_image.at<float>(r, c) = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
             }
@@ -89,23 +95,119 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State& state) {
     }
 }
 
-BENCHMARK(BENCH_SobelOriginalMatImplementation);
-
-Mat sobel_array(Mat padded_image)
+/*
+    Initial benchmarking implementation with our own normalization implemented (not using opencv's)
+*/
+static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &state)
 {
-    /*
-        Applies the sobel filtering to the padded image and normalizes to [0,255]
-    */
+    // SETUP BENCHMARK
 
-    // Define convolution kernels Gx and Gy
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+
+    /**
+     * Convolution Kernel
+     **/
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
     int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
     // Filtered image definitions
-    int n_rows = padded_image.rows - 1;
-    int n_cols = padded_image.cols - 1;
+    int n_rows = image.rows;
+    int n_cols = image.cols;
 
-    float sobel_array[n_rows][n_cols];
+    Mat padded_image = preprocessing(image);
+
+    for (auto _ : state)
+    {
+        Mat output_image(n_rows, n_cols, CV_32F);
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_image.at<float>(r, c) * g_x[0][0] +
+                              padded_image.at<float>(r, c + 1) * g_x[0][1] +
+                              padded_image.at<float>(r, c + 2) * g_x[0][2] +
+                              padded_image.at<float>(r + 1, c) * g_x[1][0] +
+                              padded_image.at<float>(r + 1, c + 1) * g_x[1][1] +
+                              padded_image.at<float>(r + 1, c + 2) * g_x[1][2] +
+                              padded_image.at<float>(r + 2, c) * g_x[2][0] +
+                              padded_image.at<float>(r + 2, c + 1) * g_x[2][1] +
+                              padded_image.at<float>(r + 2, c + 2) * g_x[2][2];
+
+                float mag_y = padded_image.at<float>(r, c) * g_y[0][0] +
+                              padded_image.at<float>(r, c + 1) * g_y[0][1] +
+                              padded_image.at<float>(r, c + 2) * g_y[0][2] +
+                              padded_image.at<float>(r + 1, c) * g_y[1][0] +
+                              padded_image.at<float>(r + 1, c + 1) * g_y[1][1] +
+                              padded_image.at<float>(r + 1, c + 2) * g_y[1][2] +
+                              padded_image.at<float>(r + 2, c) * g_y[2][0] +
+                              padded_image.at<float>(r + 2, c + 1) * g_y[2][1] +
+                              padded_image.at<float>(r + 2, c + 2) * g_y[2][2];
+
+                output_image.at<float>(r, c) = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // normalize to 0-255
+        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_image.at<float>(r, c) > max)
+                {
+                    max = output_image.at<float>(r, c);
+                }
+                if (output_image.at<float>(r, c) < min)
+                {
+                    min = output_image.at<float>(r, c);
+                }
+            }
+        }
+
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_image.at<float>(r, c) = (output_image.at<float>(r, c) - min) * (255) / (max - min);
+            }
+        }
+
+        benchmark::DoNotOptimize(output_image);
+    }
+}
+
+/*
+    Change datastructure from Mat to float arrays. Uses opencv normalization
+*/
+static void BENCH_SobelArrayImplementation(benchmark::State &state)
+{
+    // SETUP BENCHMARK
+
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+
+    /**
+     * Convolution Kernel
+     **/
+    int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
+    int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
 
     // Use array to store the image value
     float padded_array[padded_image.rows][padded_image.cols];
@@ -113,90 +215,195 @@ Mat sobel_array(Mat padded_image)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
-    // loop through calculating G_x and G_y
-    // mag is sqrt(G_x^2 + G_y^2)
-    for (int r = 0; r < n_rows; r++)
+    for (auto _ : state)
     {
-        for (int c = 0; c < n_cols; c++)
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
         {
-            float mag_x = padded_array[r][c] * g_x[0][0] +
-                          padded_array[r][c + 1] * g_x[0][1] +
-                          padded_array[r][c + 2] * g_x[0][2] +
-                          padded_array[r + 1][c] * g_x[1][0] +
-                          padded_array[r + 1][c + 1] * g_x[1][1] +
-                          padded_array[r + 1][c + 2] * g_x[1][2] +
-                          padded_array[r + 2][c] * g_x[2][0] +
-                          padded_array[r + 2][c + 1] * g_x[2][1] +
-                          padded_array[r + 2][c + 2] * g_x[2][2];
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * g_x[0][0] +
+                              padded_array[r][c + 1] * g_x[0][1] +
+                              padded_array[r][c + 2] * g_x[0][2] +
+                              padded_array[r + 1][c] * g_x[1][0] +
+                              padded_array[r + 1][c + 1] * g_x[1][1] +
+                              padded_array[r + 1][c + 2] * g_x[1][2] +
+                              padded_array[r + 2][c] * g_x[2][0] +
+                              padded_array[r + 2][c + 1] * g_x[2][1] +
+                              padded_array[r + 2][c + 2] * g_x[2][2];
 
-            float mag_y = padded_array[r][c] * g_y[0][0] +
-                          padded_array[r][c + 1] * g_y[0][1] +
-                          padded_array[r][c + 2] * g_y[0][2] +
-                          padded_array[r + 1][c] * g_y[1][0] +
-                          padded_array[r + 1][c + 1] * g_y[1][1] +
-                          padded_array[r + 1][c + 2] * g_y[1][2] +
-                          padded_array[r + 2][c] * g_y[2][0] +
-                          padded_array[r + 2][c + 1] * g_y[2][1] +
-                          padded_array[r + 2][c + 2] * g_y[2][2];
+                float mag_y = padded_array[r][c] * g_y[0][0] +
+                              padded_array[r][c + 1] * g_y[0][1] +
+                              padded_array[r][c + 2] * g_y[0][2] +
+                              padded_array[r + 1][c] * g_y[1][0] +
+                              padded_array[r + 1][c + 1] * g_y[1][1] +
+                              padded_array[r + 1][c + 2] * g_y[1][2] +
+                              padded_array[r + 2][c] * g_y[2][0] +
+                              padded_array[r + 2][c + 1] * g_y[2][1] +
+                              padded_array[r + 2][c + 2] * g_y[2][2];
 
-            // Instead of Mat, store the value into an array
-            sobel_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
         }
+
+        // Convert array to Mat, base on documentation, this function only create a header that points to the data
+        Mat output_image = Mat(n_rows, n_cols, CV_32F, output_array);
+
+        // normalize to 0-255
+        normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
+        benchmark::DoNotOptimize(output_image);
     }
-
-    // Convert array to Mat, base on documentation, this function only create a header that points to the data
-    Mat sobel_image = Mat(n_rows, n_cols, CV_32F, sobel_array);
-
-    normalize(sobel_image, sobel_image, 0, 255, NORM_MINMAX, CV_8UC1);
-
-    return sobel_image;
 }
 
+/*
+    Hardcode the kernel values into the multiplication. Uses opencv normalization.
+*/
+static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
+{
+    // SETUP BENCHMARK
+
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    float padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // Convert array to Mat, base on documentation, this function only create a header that points to the data
+        Mat output_image = Mat(n_rows, n_cols, CV_32F, output_array);
+
+        // normalize to 0-255
+        normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
+        benchmark::DoNotOptimize(output_image);
+    }
+}
+
+/*
+    Hardcode the kernal values into the multiplication. Uses our normalization.
+*/
+static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::State &state)
+{
+    // SETUP BENCHMARK
+
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    float padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // normalize to 0-255
+        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+BENCHMARK(BENCH_SobelOriginalMatImplementation);
+BENCHMARK(BENCH_SobelOriginalNormalizationImplementation);
+BENCHMARK(BENCH_SobelArrayImplementation);
+BENCHMARK(BENCH_SobelHardcodeKernelsImplementation);
+BENCHMARK(BENCH_SobelHardcodeKernelsNormalizationImplementation);
 
 // Calls and runs the benchmark program
 BENCHMARK_MAIN();
-// int main(int argc, char **argv)
-// {
-
-//     if (argc != 2)
-//     {
-//         std::cout << "Usage: sobel <input image" << std::endl;
-//         return 0;
-//     }
-
-//     // read in image as grayscale
-//     // Mat is an OpenCV data structure
-//     Mat raw_image = imread(argv[1], IMREAD_GRAYSCALE);
-
-//     if (raw_image.empty())
-//     {
-//         std::cout << "Could not read image: " << argv[1] << std::endl;
-//         return 1;
-//     }
-
-//     // convert image to CV_32F (equivalent to a float)
-//     Mat image;
-//     raw_image.convertTo(image, CV_32F);
-
-//     // ----- Initial Sobel Implementation -----
-
-//     Mat orig_padded_img = preprocessing(image);
-
-//     Mat orig_sobel_img = sobel(orig_padded_img);
-
-//     // imshow("Detected Edges", orig_sobel_img);
-//     // waitKey(0);
-
-//     // ----- Array Sobel Implementation -----
-
-//     Mat arr_padded_img = preprocessing(image);
-
-//     Mat arr_sobel_img = sobel_array(arr_padded_img);
-
-//     // imshow("Detected Edges", arr_sobel_img);
-//     imwrite("outputs/arroutput.jpg", arr_sobel_img);
-//     imwrite("outputs/sobelout.jpg", orig_sobel_img);
-//     // waitKey(0);
-
-//     return 0;
-// }
