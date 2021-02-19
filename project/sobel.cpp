@@ -399,11 +399,179 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
     }
 }
 
+/*
+    Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+*/
+static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
+{
+    // SETUP BENCHMARK
+
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_8UC1); // TODO: opt 1 - change to uint8
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    uint8_t padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // normalize to 0-255
+        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Change to use 2d vectors. Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+*/
+static void BENCH_SobelVectorImplementation(benchmark::State &state)
+{
+    // SETUP BENCHMARK
+
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    input_image.convertTo(image, CV_8UC1); // TODO: opt 1 - change to uint8
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    // uint8_t padded_array[padded_image.rows][padded_image.cols];
+    std::vector<std::vector<uint8_t>> padded_array(padded_image.rows, std::vector<uint8_t>(padded_image.cols, 0));
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    for (auto _ : state)
+    {
+        // float output_array[n_rows][n_cols];
+        std::vector<std::vector<float>> output_array(n_rows, std::vector<float>(n_cols, 0));
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // normalize to 0-255
+        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
 BENCHMARK(BENCH_SobelOriginalMatImplementation);
 BENCHMARK(BENCH_SobelOriginalNormalizationImplementation);
 BENCHMARK(BENCH_SobelArrayImplementation);
 BENCHMARK(BENCH_SobelHardcodeKernelsImplementation);
 BENCHMARK(BENCH_SobelHardcodeKernelsNormalizationImplementation);
+BENCHMARK(BENCH_Sobeluint8InputImplementation);
+BENCHMARK(BENCH_SobelVectorImplementation);
 
 // Calls and runs the benchmark program
 BENCHMARK_MAIN();
