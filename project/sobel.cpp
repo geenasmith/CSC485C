@@ -37,18 +37,14 @@ Mat preprocessing(Mat image)
 */
 static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_32F);
 
-    /**
-     * Convolution Kernel
-     **/
+    // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
     int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
@@ -58,6 +54,7 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 
     Mat padded_image = preprocessing(image);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         Mat output_image(n_rows, n_cols, CV_32F);
@@ -89,8 +86,9 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
             }
         }
 
-        // normalize to 0-255
+        // Use opencv's normalization function
         normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
+
         benchmark::DoNotOptimize(output_image);
     }
 }
@@ -100,18 +98,14 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 */
 static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_32F);
 
-    /**
-     * Convolution Kernel
-     **/
+    // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
     int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
@@ -121,6 +115,7 @@ static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &sta
 
     Mat padded_image = preprocessing(image);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         Mat output_image(n_rows, n_cols, CV_32F);
@@ -152,8 +147,8 @@ static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &sta
             }
         }
 
-        // normalize to 0-255
-        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
         float max = -INFINITY;
         float min = INFINITY;
         for (int r = 0; r < n_rows; r++)
@@ -188,18 +183,14 @@ static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &sta
 */
 static void BENCH_SobelArrayImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_32F);
 
-    /**
-     * Convolution Kernel
-     **/
+    // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
     int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
@@ -209,12 +200,13 @@ static void BENCH_SobelArrayImplementation(benchmark::State &state)
 
     Mat padded_image = preprocessing(image);
 
-    // Use array to store the image value
+    // Convert padded image from cv::Mat to array
     float padded_array[padded_image.rows][padded_image.cols];
     for (int i = 0; i < padded_image.rows; ++i)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         float output_array[n_rows][n_cols];
@@ -250,8 +242,9 @@ static void BENCH_SobelArrayImplementation(benchmark::State &state)
         // Convert array to Mat, base on documentation, this function only create a header that points to the data
         Mat output_image = Mat(n_rows, n_cols, CV_32F, output_array);
 
-        // normalize to 0-255
+        // Use opencv's normalization function
         normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
+
         benchmark::DoNotOptimize(output_image);
     }
 }
@@ -261,14 +254,12 @@ static void BENCH_SobelArrayImplementation(benchmark::State &state)
 */
 static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_32F);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -282,6 +273,7 @@ static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         float output_array[n_rows][n_cols];
@@ -311,7 +303,7 @@ static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
         // Convert array to Mat, base on documentation, this function only create a header that points to the data
         Mat output_image = Mat(n_rows, n_cols, CV_32F, output_array);
 
-        // normalize to 0-255
+        // Use opencv's normalization function
         normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
         benchmark::DoNotOptimize(output_image);
     }
@@ -322,14 +314,12 @@ static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 */
 static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_32F);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -343,6 +333,7 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         float output_array[n_rows][n_cols];
@@ -369,8 +360,8 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
             }
         }
 
-        // normalize to 0-255
-        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
         float max = -INFINITY;
         float min = INFINITY;
         for (int r = 0; r < n_rows; r++)
@@ -404,14 +395,12 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
 */
 static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
-    // convert image to CV_32F (equivalent to a float)
+    // convert image to CV_8UC1 (uint8)
     Mat image;
-    input_image.convertTo(image, CV_8UC1); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_8UC1);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -425,6 +414,7 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         float output_array[n_rows][n_cols];
@@ -451,8 +441,8 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
             }
         }
 
-        // normalize to 0-255
-        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
         float max = -INFINITY;
         float min = INFINITY;
         for (int r = 0; r < n_rows; r++)
@@ -486,14 +476,12 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 */
 static void BENCH_SobelVectorImplementation(benchmark::State &state)
 {
-    // SETUP BENCHMARK
-
     // read in image as grayscale OpenCV Mat Object
     Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
-    // convert image to CV_32F (equivalent to a float)
+    // convert image to CV_8UC1 (uint8)
     Mat image;
-    input_image.convertTo(image, CV_8UC1); // TODO: opt 1 - change to uint8
+    input_image.convertTo(image, CV_8UC1);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -508,6 +496,7 @@ static void BENCH_SobelVectorImplementation(benchmark::State &state)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
 
+    // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)
     {
         // float output_array[n_rows][n_cols];
@@ -535,8 +524,8 @@ static void BENCH_SobelVectorImplementation(benchmark::State &state)
             }
         }
 
-        // normalize to 0-255
-        // I_N = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
         float max = -INFINITY;
         float min = INFINITY;
         for (int r = 0; r < n_rows; r++)
