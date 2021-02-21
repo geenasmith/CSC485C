@@ -8,6 +8,8 @@
 
 using namespace cv;
 
+std::string FILENAME = "images/rgb1.jpg";
+
 /*
 compile (cause pkg-config is annoying): g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv`
 run: ./sobel <input image>
@@ -31,6 +33,13 @@ Mat preprocessing(Mat image)
     return padded_image;
 }
 
+Mat resizeImage(Mat input_image, int resize_factor)
+{
+    double resize_amount = 1.0 / (1 << resize_factor);
+    Mat resized_image;
+    resize(input_image, resized_image, Size(), resize_amount, resize_amount);
+    return resized_image;
+}
 /*
     Initial benchmarking implementation
       - Uses opencv Mat objects and opencv normalization
@@ -38,11 +47,13 @@ Mat preprocessing(Mat image)
 static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F);
+    resized_image.convertTo(image, CV_32F);
 
     // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
@@ -99,11 +110,13 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F);
+    resized_image.convertTo(image, CV_32F);
 
     // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
@@ -184,11 +197,13 @@ static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &sta
 static void BENCH_SobelArrayImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F);
+    resized_image.convertTo(image, CV_32F);
 
     // Convolution kernels
     int g_x[3][3] = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
@@ -255,11 +270,13 @@ static void BENCH_SobelArrayImplementation(benchmark::State &state)
 static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F);
+    resized_image.convertTo(image, CV_32F);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -315,11 +332,13 @@ static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
-    input_image.convertTo(image, CV_32F);
+    resized_image.convertTo(image, CV_32F);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -396,11 +415,13 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
 static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_8UC1 (uint8)
     Mat image;
-    input_image.convertTo(image, CV_8UC1);
+    resized_image.convertTo(image, CV_8UC1);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -477,11 +498,13 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 static void BENCH_SobelVectorImplementation(benchmark::State &state)
 {
     // read in image as grayscale OpenCV Mat Object
-    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
 
     // convert image to CV_8UC1 (uint8)
     Mat image;
-    input_image.convertTo(image, CV_8UC1);
+    resized_image.convertTo(image, CV_8UC1);
 
     // Filtered image definitions
     int n_rows = image.rows;
@@ -554,13 +577,18 @@ static void BENCH_SobelVectorImplementation(benchmark::State &state)
     }
 }
 
-BENCHMARK(BENCH_SobelOriginalMatImplementation);
-BENCHMARK(BENCH_SobelOriginalNormalizationImplementation);
-BENCHMARK(BENCH_SobelArrayImplementation);
-BENCHMARK(BENCH_SobelHardcodeKernelsImplementation);
-BENCHMARK(BENCH_SobelHardcodeKernelsNormalizationImplementation);
-BENCHMARK(BENCH_Sobeluint8InputImplementation);
-BENCHMARK(BENCH_SobelVectorImplementation);
+/*
+Can only pass in arguments to benchmark function that are integers.
+To run on different sized images, will pass in how small to shrink the image.
+Eg. passing in 0 will resize image by 1/2^0 on each axis, 1 will resize to 1/2^1 etc.
+*/
+BENCHMARK(BENCH_SobelOriginalMatImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_SobelOriginalNormalizationImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_SobelArrayImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_SobelHardcodeKernelsImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_SobelHardcodeKernelsNormalizationImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_Sobeluint8InputImplementation)->DenseRange(0, 5, 1);
+BENCHMARK(BENCH_SobelVectorImplementation)->DenseRange(0, 5, 1);
 
 // Calls and runs the benchmark program
 BENCHMARK_MAIN();
