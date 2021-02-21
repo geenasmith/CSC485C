@@ -429,7 +429,6 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
     int n_cols = image.cols;
 
     Mat padded_image = preprocessing(image);
-
     // Use array to store the image value
     uint8_t padded_array[padded_image.rows][padded_image.cols];
     for (int i = 0; i < padded_image.rows; ++i)
@@ -492,6 +491,450 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
         // benchmark::DoNotOptimize(output_array);
     }
 }
+
+/*
+    Uses the BENCH_Sobeluint8InputImplementation as a base, but transformes the input into a 1D array
+
+    # Note/Guess: this should see biggest speedup in smaller images as multiple lines will sit in the cacheline
+    BUT speculative prefetching might pick up on the jumps
+*/
+static void BENCH_Sobeluint8Input1DArray(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    resized_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    int p_cols = padded_image.cols;
+    int p_rows = padded_image.rows;
+    // Use 1D array to store the image value
+    uint8_t padded_array[p_cols * p_rows];
+    for (int r = 0; r < p_rows; ++r)
+    {
+        for (int c = 0; c < p_cols; ++c)
+        {
+            padded_array[r * p_cols + c] = padded_image.at<float>(r, c);
+        }
+    }
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r * p_cols + c] * 1 +
+                              padded_array[r * p_cols + c + 2] * -1 +
+                              padded_array[(r + 1) * p_cols + c] * 2 +
+                              padded_array[(r + 1) * p_cols + c + 2] * -2 +
+                              padded_array[(r + 2) * p_cols + c] * 1 +
+                              padded_array[(r + 2) * p_cols + c + 2] * -1;
+
+                float mag_y = padded_array[r * p_cols + c] * 1 +
+                              padded_array[r * p_cols + c + 1] * 2 +
+                              padded_array[r * p_cols + c + 2] * 1 +
+                              padded_array[(r + 2) * p_cols + c] * -1 +
+                              padded_array[(r + 2) * p_cols + c + 1] * -2 +
+                              padded_array[(r + 2) * p_cols + c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2)); // TODO: pow slow, use mag_y*mag_y. Likewise, use
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+*/
+static void BENCH_Sobeluint8MathOperationReorder(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    resized_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+    // Use array to store the image value
+    uint8_t padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+
+                register float mag_y = padded_array[r][c] * 1 +
+                                       padded_array[r][c + 1] * 2 +
+                                       padded_array[r][c + 2] * 1;
+
+                register float mag_x = padded_array[r][c] * 1 +
+                                       padded_array[r][c + 2] * -1;
+
+                mag_x += padded_array[r + 1][c] * 2 +
+                         padded_array[r + 1][c + 2] * -2;
+
+                mag_x += padded_array[r + 2][c] * 1 +
+                         padded_array[r + 2][c + 2] * -1;
+
+                mag_y += padded_array[r + 2][c] * -1 +
+                         padded_array[r + 2][c + 1] * -2 +
+                         padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Uses the BENCH_Sobeluint8Input1DArray as a base, but reorders the math operations
+
+*/
+static void BENCH_Sobeluint8Input1DArrayMathOperationReorder(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    resized_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    int p_cols = padded_image.cols;
+    int p_rows = padded_image.rows;
+    // Use 1D array to store the image value
+    uint8_t padded_array[p_cols * p_rows];
+    for (int r = 0; r < p_rows; ++r)
+    {
+        for (int c = 0; c < p_cols; ++c)
+        {
+            padded_array[r * p_cols + c] = padded_image.at<float>(r, c);
+        }
+    }
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+
+                float mag_x = padded_array[r * p_cols + c] * 1 +
+                              padded_array[r * p_cols + c + 2] * -1;
+
+                float mag_y = padded_array[r * p_cols + c] * 1 +
+                              padded_array[r * p_cols + c + 1] * 2 +
+                              padded_array[r * p_cols + c + 2] * 1;
+
+                mag_x += padded_array[(r + 1) * p_cols + c] * 2 +
+                         padded_array[(r + 1) * p_cols + c + 2] * -2;
+
+                mag_x += padded_array[(r + 2) * p_cols + c] * 1 +
+                         padded_array[(r + 2) * p_cols + c + 2] * -1;
+                mag_y += padded_array[(r + 2) * p_cols + c] * -1 +
+                         padded_array[(r + 2) * p_cols + c + 1] * -2 +
+                         padded_array[(r + 2) * p_cols + c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2)); // TODO: pow slow, use mag_y*mag_y. Likewise, use
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Input image is uint8 type as above, but does basic loop unrolling on rows of array.
+*/
+static void BENCH_Sobeluint8InputImplementationLoopUnroll(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    resized_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    uint8_t padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; j += 2)
+        {
+            padded_array[i][j] = padded_image.at<float>(i, j);
+            padded_array[i][j + 1] = padded_image.at<float>(i, j + 1);
+        }
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                int mag_x = padded_array[r][c] * 1 +
+                            padded_array[r][c + 2] * -1 +
+                            padded_array[r + 1][c] * 2 +
+                            padded_array[r + 1][c + 2] * -2 +
+                            padded_array[r + 2][c] * 1 +
+                            padded_array[r + 2][c + 2] * -1;
+
+                int mag_y = padded_array[r][c] * 1 +
+                            padded_array[r][c + 1] * 2 +
+                            padded_array[r][c + 2] * 1 +
+                            padded_array[r + 2][c] * -1 +
+                            padded_array[r + 2][c + 1] * -2 +
+                            padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+*/
+/*
+static void BENCH_Sobeluint8InputImplementationDiagTiling(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    input_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    Mat padded_image = preprocessing(image);
+
+    // Use array to store the image value
+    uint8_t padded_array[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            padded_array[i][j] = padded_image.at<float>(i, j);
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        auto const x_tile_size = 4u;
+        auto const y_tile_size = 4u;
+
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+*/
 
 /*
     Change to use 2d vectors. Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
@@ -838,6 +1281,11 @@ BENCHMARK(BENCH_SobelVectorImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelMagIntsImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelHardcodePowImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelCombineMaxMinImplementation)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8InputImplementation)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8InputImplementationLoopUnroll)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8Input1DArray)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8Input1DArrayMathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8MathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
 
 // Calls and runs the benchmark program
 BENCHMARK_MAIN();
