@@ -9,7 +9,7 @@
 using namespace cv;
 
 std::string FILENAME = "images/rgb1.jpg";
-int DENSERANGEEND = 5;
+int DENSERANGEEND = 0;
 
 /*
 compile (cause pkg-config is annoying): g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv`
@@ -1212,6 +1212,154 @@ static void BENCH_SobelCombineMaxMinImplementation(benchmark::State &state)
     for (int i = 0; i < padded_image.rows; ++i)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = padded_image.at<float>(i, j);
+
+    // Benchmark includes convolution and normalization back to [0,255]
+    for (auto _ : state)
+    {
+        float output_array[n_rows][n_cols];
+        float max = -INFINITY;
+        float min = INFINITY;
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                float mag_x = padded_array[r][c] * 1 +
+                              padded_array[r][c + 2] * -1 +
+                              padded_array[r + 1][c] * 2 +
+                              padded_array[r + 1][c + 2] * -2 +
+                              padded_array[r + 2][c] * 1 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                float mag_y = padded_array[r][c] * 1 +
+                              padded_array[r][c + 1] * 2 +
+                              padded_array[r][c + 2] * 1 +
+                              padded_array[r + 2][c] * -1 +
+                              padded_array[r + 2][c + 1] * -2 +
+                              padded_array[r + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[r][c] = sqrt((mag_x * mag_x) + (mag_y * mag_y));
+
+                if (output_array[r][c] > max)
+                {
+                    max = output_array[r][c];
+                }
+                if (output_array[r][c] < min)
+                {
+                    min = output_array[r][c];
+                }
+            }
+        }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
+
+        for (int r = 0; r < n_rows; r++)
+        {
+            for (int c = 0; c < n_cols; c++)
+            {
+                output_array[r][c] = (output_array[r][c] - min) * (255) / (max - min);
+            }
+        }
+
+        // benchmark::DoNotOptimize(output_array);
+    }
+}
+
+/*
+    Based on BENCH_SobelCombineMaxMinImplementation
+    combine the determination of max and min for normalization into convolution loops
+*/
+static void BENCH_SobelTiledImplementation(benchmark::State &state)
+{
+    // read in image as grayscale OpenCV Mat Object
+    Mat input_image = imread(FILENAME, IMREAD_GRAYSCALE);
+
+    Mat resized_image = resizeImage(input_image, state.range(0));
+
+    // convert image to CV_8UC1 (uint8)
+    Mat image;
+    resized_image.convertTo(image, CV_8UC1);
+
+    // Filtered image definitions
+    int n_rows = image.rows;
+    int n_cols = image.cols;
+
+    /**
+     * Tiling Concept/Pseudocode:
+     * 
+     * Break the input image into blocks of X*Y pixels where X*Y <= CacheLineSize.
+     * 
+     * Given an image that is 14x14, with X being a padded border on the outer edge, split into 8x8 tiles and compute. The first tile operates on the #:
+     * X X X X X X X X X X X X X X X X X   ->  X X X X X X X X X X X X X X X X X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X # # # # # # 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X 1 2 3 4 5 6 7 8 9 0 A B C D E X   ->  X 1 2 3 4 5 6 7 8 9 0 A B C D E X 
+     * X X X X X X X X X X X X X X X X X   ->  X X X X X X X X X X X X X X X X X 
+
+    To do this, we can write the 8x8 block as contiguous in memory, and each 8x8 block overlaps on the border edge.
+    Then, we iterate through each tile.
+     **/
+
+
+    auto const ptile_width = 8u;
+    auto const ptile_height = 8u;
+    auto const tile_width = ptile_width - 2u;
+    auto const tile_height = ptile_height - 2u;
+
+    /*
+    Apply preprocessing: This isa modified version of preprocessing to not pad directly.
+      - apply gaussian filter to smooth image (removes noise that might be considered an edge)
+      - pad the image with a 1px border of 0s for the sobel filter
+    */
+    // gaussian filter to remove noise
+    GaussianBlur(image, image, Size(3, 3), 0, 0);
+
+    // Padded image needs to be 2 + tile_width * ceil(n_cols / tile_width). 1 is the top border, so:
+    int b_b = 1 + (tile_height * ceil(n_rows/tile_height)) - n_rows
+    int b_r = 1 + (tile_width * ceil(n_cols/tile_width)) - n_cols
+
+    Mat pi;
+    copyMakeBorder(image, pi, 1, b_b, 1, b_r, BORDER_CONSTANT, 0);
+    
+    auto int tiles_x = ceil(n_cols / tile_width);
+    auto int tiles_y = ceil(n_rows / tile_height);
+
+    uint8_t tiled_array[tiles_x*tiles_y][ptile_width*ptile_height]; // 2d array of "tiles". A ptile is a 8x8 block of pixels
+    for (int r = 0; r < pi.rows; ++r) {
+        for (int c = 0; c < pi.cols; ++c) {
+            tiled_array[][]
+        }
+    }
+
+    for (int ty = 0; ty < tiles_y; ty++) {
+        for (int tx = 0; tx < tiles_x; tx++) { // for tile at (tx, ty)
+
+
+            // for (int y = 0; y < ptile_height; ++y) {
+            //     for (int x = 0; x < ptile_width; ++x) {
+            //         tiled_array[ty][tx][y * ptile_width + x] = pi.at<int>(tx*tile_width + x, y - 1);
+            //     }
+            // }
+
+            // for (int pty = 0; pty < ptile_height; ++pty) { // 0, 1, 2, 3, 4, 5, 6, 7
+            //     for (int ptx = 0; ptx < ptile_width; ++ptx) {
+            //         tiled_array[ty*tx][pty*ptile_width + ptx] = padded_image.at<int>(ptx, pty)
+            //     }
+            // }
+        }
+    }
 
     // Benchmark includes convolution and normalization back to [0,255]
     for (auto _ : state)

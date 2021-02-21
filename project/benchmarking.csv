@@ -1,0 +1,25 @@
+2021-02-21T12:17:13-08:00
+Running ./sobel
+Run on (12 X 2600 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 256 KiB (x6)
+  L3 Unified 9216 KiB (x1)
+Load Average: 1.71, 1.91, 1.98
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message
+"BENCH_SobelOriginalMatImplementation/0",83,8.21221e+06,8.20792e+06,ns,,,,,
+"BENCH_SobelOriginalNormalizationImplementation/0",73,9.35504e+06,9.3444e+06,ns,,,,,
+"BENCH_SobelArrayImplementation/0",124,5.52878e+06,5.52792e+06,ns,,,,,
+"BENCH_SobelHardcodeKernelsImplementation/0",158,4.42339e+06,4.42285e+06,ns,,,,,
+"BENCH_SobelHardcodeKernelsNormalizationImplementation/0",147,4.74719e+06,4.74635e+06,ns,,,,,
+"BENCH_Sobeluint8InputImplementation/0",234,2.92825e+06,2.92786e+06,ns,,,,,
+"BENCH_SobelVectorImplementation/0",99,7.13092e+06,7.11715e+06,ns,,,,,
+"BENCH_SobelMagIntsImplementation/0",222,3.11278e+06,3.11219e+06,ns,,,,,
+"BENCH_SobelHardcodePowImplementation/0",517,1.33654e+06,1.33546e+06,ns,,,,,
+"BENCH_SobelCombineMaxMinImplementation/0",541,1.29593e+06,1.29561e+06,ns,,,,,
+"BENCH_Sobeluint8InputImplementation/0",237,2.93257e+06,2.93145e+06,ns,,,,,
+"BENCH_Sobeluint8InputImplementationLoopUnroll/0",226,3.14545e+06,3.14516e+06,ns,,,,,
+"BENCH_Sobeluint8Input1DArray/0",238,3.00965e+06,3.00272e+06,ns,,,,,
+"BENCH_Sobeluint8Input1DArrayMathOperationReorder/0",219,3.15874e+06,3.15823e+06,ns,,,,,
+"BENCH_Sobeluint8MathOperationReorder/0",225,3.1561e+06,3.15583e+06,ns,,,,,
