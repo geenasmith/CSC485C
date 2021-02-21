@@ -39,3 +39,4 @@ project/sobel
 # Google benchmark
 benchmark/
 pkgconfig/opencv.pc
+run.sh
