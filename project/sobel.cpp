@@ -9,21 +9,13 @@
 using namespace cv;
 
 std::string FILENAME = "images/rgb1.jpg";
-int DENSERANGEEND = 5;
+int DENSERANGEEND = 0;
 
 /*
-compile (cause pkg-config is annoying): g++ -std=c++11 sobel.cpp -o sobel `pkg-config --cflags --libs opencv`
-run: ./sobel <input image>
+    Apply a gaussian filter and pad the image with a 1px border of 0s
 */
-
 Mat preprocessing(Mat image)
 {
-    /*
-    Apply preprocessing:
-      - apply gaussian filter to smooth image (removes noise that might be considered an edge)
-      - pad the image with a 1px border of 0s for the sobel filter
-    */
-
     // gaussian filter to remove noise
     GaussianBlur(image, image, Size(3, 3), 0, 0);
 
@@ -34,6 +26,10 @@ Mat preprocessing(Mat image)
     return padded_image;
 }
 
+/*
+    Returns input_image resized by 1/(2<<resize_factor) along each dimension
+    eg. resize_factor=1 will resize by 0.5
+*/
 Mat resizeImage(Mat input_image, int resize_factor)
 {
     double resize_amount = 1.0 / (1 << resize_factor);
@@ -46,22 +42,23 @@ Mat resizeImage(Mat input_image, int resize_factor)
     Reference: http://ilab.usc.edu/wiki/index.php/Fast_Square_Root
     Algorithm: Log base 2 approximation and Newton's Method
 */
-float sqrt_impl(const float x)  
+float sqrt_impl(const float x)
 {
-    union
-    {
+    union {
         int i;
         float x;
     } u;
 
     u.x = x;
-    u.i = (1<<29) + (u.i >> 1) - (1<<22); 
+    u.i = (1 << 29) + (u.i >> 1) - (1 << 22);
     return u.x;
-} 
+}
 
 /*
-    Initial benchmarking implementation
-      - Uses opencv Mat objects and opencv normalization
+    First imlementation that uses opencv Mat objects and uses opencv's implementation of normalization.
+
+    Justification: 
+    Based on:
 */
 static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 {
@@ -124,7 +121,12 @@ static void BENCH_SobelOriginalMatImplementation(benchmark::State &state)
 }
 
 /*
-    Initial benchmarking implementation with our own normalization implemented (not using opencv's)
+    Use Mat objects and implement our own normalization.
+
+    Justification: opencv's normalization is highly optimized. We consider normalization part of our benchmarking.
+    Based on: BENCH_SobelOriginalMatImplementation
+
+    **This is our starting implementation
 */
 static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &state)
 {
@@ -212,6 +214,9 @@ static void BENCH_SobelOriginalNormalizationImplementation(benchmark::State &sta
 
 /*
     Change datastructure from Mat to float arrays. Uses opencv normalization
+
+    Justification: Arrays should be faster than Mat objects due to less overhead.
+    Based on: BENCH_SobelOriginalMatImplementation
 */
 static void BENCH_SobelArrayImplementation(benchmark::State &state)
 {
@@ -285,6 +290,9 @@ static void BENCH_SobelArrayImplementation(benchmark::State &state)
 
 /*
     Hardcode the kernel values into the multiplication. Uses opencv normalization.
+
+    Justification: Avoids having to look up values from kernel arrays.
+    Based on: BENCH_SobelArrayImplementation
 */
 static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 {
@@ -347,6 +355,9 @@ static void BENCH_SobelHardcodeKernelsImplementation(benchmark::State &state)
 
 /*
     Hardcode the kernal values into the multiplication. Uses our normalization.
+
+    Justification: Since we are using our own normalization, need to see how hardcoding kernels performs
+    Based on: BENCH_SobelHardcodeKernelsImplementation, BENCH_SobelOriginalNormalizationImplementation
 */
 static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::State &state)
 {
@@ -430,6 +441,9 @@ static void BENCH_SobelHardcodeKernelsNormalizationImplementation(benchmark::Sta
 
 /*
     Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+
+    Justification: greyscale images in range of [0,255]. Should allow more values in cache
+    Based on: BENCH_SobelHardcodeKernelsNormalizationImplementation
 */
 static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 {
@@ -513,8 +527,9 @@ static void BENCH_Sobeluint8InputImplementation(benchmark::State &state)
 /*
     Uses the BENCH_Sobeluint8InputImplementation as a base, but transformes the input into a 1D array
 
-    # Note/Guess: this should see biggest speedup in smaller images as multiple lines will sit in the cacheline
+    Justification: this should see biggest speedup in smaller images as multiple lines will sit in the cacheline
     BUT speculative prefetching might pick up on the jumps
+    Base on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_Sobeluint8Input1DArray(benchmark::State &state)
 {
@@ -603,7 +618,10 @@ static void BENCH_Sobeluint8Input1DArray(benchmark::State &state)
 }
 
 /*
-    Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+    Separate kernel multiplication by row.
+
+    Justification: Separating kernel multiplication by rows should avoid having to read rows in multiple times during one calculation
+    Based on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_Sobeluint8MathOperationReorder(benchmark::State &state)
 {
@@ -689,8 +707,10 @@ static void BENCH_Sobeluint8MathOperationReorder(benchmark::State &state)
 }
 
 /*
-    Uses the BENCH_Sobeluint8Input1DArray as a base, but reorders the math operations
+    Combines 1d array input and reordering math operations
 
+    Justification: Reordering math operations may have a larger effect on 1d array
+    Based on: BENCH_Sobeluint8Input1DArray, BENCH_Sobeluint8MathOperationReorder
 */
 static void BENCH_Sobeluint8Input1DArrayMathOperationReorder(benchmark::State &state)
 {
@@ -783,6 +803,11 @@ static void BENCH_Sobeluint8Input1DArrayMathOperationReorder(benchmark::State &s
 
 /*
     Input image is uint8 type as above, but does basic loop unrolling on rows of array.
+
+    Justification:
+    Based on: BENCH_Sobeluint8Input1DArray
+
+    ** maybe im dumb, but where is the loop unrolling??
 */
 static void BENCH_Sobeluint8InputImplementationLoopUnroll(benchmark::State &state)
 {
@@ -955,7 +980,10 @@ static void BENCH_Sobeluint8InputImplementationDiagTiling(benchmark::State &stat
 */
 
 /*
-    Change to use 2d vectors. Input image is uint8 type. Hardcode the kernal values into the multiplication. Uses our normalization.
+    Change to use 2d vectors for comparing to array implementation
+
+    Justification: Test to see if arrays or std::vectors are faster
+    Based on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_SobelVectorImplementation(benchmark::State &state)
 {
@@ -1041,6 +1069,9 @@ static void BENCH_SobelVectorImplementation(benchmark::State &state)
 
 /*
     Change mag_x and mag_y to be integers
+
+    Justification: Input image and kernel values are both integers. May be faster to write to an integer instead of float.
+    Based on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_SobelMagIntsImplementation(benchmark::State &state)
 {
@@ -1124,6 +1155,9 @@ static void BENCH_SobelMagIntsImplementation(benchmark::State &state)
 
 /*
     Use x*x instad of pow(x,2)
+
+    Justification: C++ pow function is slower than explicit x*x when squaring
+    Based on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_SobelHardcodePowImplementation(benchmark::State &state)
 {
@@ -1206,7 +1240,10 @@ static void BENCH_SobelHardcodePowImplementation(benchmark::State &state)
 }
 
 /*
-    combine the determination of max and min for normalization into convolution loops
+    combine the determination of max and min for normalization into convolution loops (was previously separated)
+
+    Justification: combining max/min determination cuts down on looping overhead
+    Based on: BENCH_Sobeluint8InputImplementation
 */
 static void BENCH_SobelCombineMaxMinImplementation(benchmark::State &state)
 {
@@ -1286,6 +1323,9 @@ static void BENCH_SobelCombineMaxMinImplementation(benchmark::State &state)
 
 /*
     Use sqrt() found in http://ilab.usc.edu/wiki/index.php/Fast_Square_Root
+
+    Justification: built in sqrt function may not be the most efficient
+    Based on: BENCH_SobelCombineMaxMinImplementation
 */
 static void BENCH_SobelHardcodePowAndSqrtImplementation(benchmark::State &state)
 {
@@ -1314,6 +1354,8 @@ static void BENCH_SobelHardcodePowAndSqrtImplementation(benchmark::State &state)
     for (auto _ : state)
     {
         float output_array[n_rows][n_cols];
+        float max = -INFINITY;
+        float min = INFINITY;
         for (int r = 0; r < n_rows; r++)
         {
             for (int c = 0; c < n_cols; c++)
@@ -1334,17 +1376,7 @@ static void BENCH_SobelHardcodePowAndSqrtImplementation(benchmark::State &state)
 
                 // Instead of Mat, store the value into an array
                 output_array[r][c] = sqrt_impl((mag_x * mag_x) + (mag_y * mag_y));
-            }
-        }
 
-        // Implement our own normalization
-        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
-        float max = -INFINITY;
-        float min = INFINITY;
-        for (int r = 0; r < n_rows; r++)
-        {
-            for (int c = 0; c < n_cols; c++)
-            {
                 if (output_array[r][c] > max)
                 {
                     max = output_array[r][c];
@@ -1355,6 +1387,9 @@ static void BENCH_SobelHardcodePowAndSqrtImplementation(benchmark::State &state)
                 }
             }
         }
+
+        // Implement our own normalization
+        // For each pixel I, I_norm = (I-Min) * (newMax-newMin) / (Max-Min) + newMin
         for (int r = 0; r < n_rows; r++)
         {
             for (int c = 0; c < n_cols; c++)
@@ -1378,16 +1413,15 @@ BENCHMARK(BENCH_SobelArrayImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelHardcodeKernelsImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelHardcodeKernelsNormalizationImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_Sobeluint8InputImplementation)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8Input1DArray)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8MathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8Input1DArrayMathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_Sobeluint8InputImplementationLoopUnroll)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelVectorImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelMagIntsImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelHardcodePowImplementation)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_SobelHardcodePowAndSqrtImplementation)->DenseRange(0, DENSERANGEEND, 1);
 BENCHMARK(BENCH_SobelCombineMaxMinImplementation)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_Sobeluint8InputImplementation)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_Sobeluint8InputImplementationLoopUnroll)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_Sobeluint8Input1DArray)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_Sobeluint8Input1DArrayMathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
-BENCHMARK(BENCH_Sobeluint8MathOperationReorder)->DenseRange(0, DENSERANGEEND, 1);
+BENCHMARK(BENCH_SobelHardcodePowAndSqrtImplementation)->DenseRange(0, DENSERANGEEND, 1);
 
 // Calls and runs the benchmark program
 BENCHMARK_MAIN();
