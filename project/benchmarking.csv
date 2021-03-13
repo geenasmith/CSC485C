@@ -1,0 +1,12 @@
+2021-03-10T13:17:43-08:00
+Running ./sobel
+Run on (12 X 2600 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 256 KiB (x6)
+  L3 Unified 9216 KiB (x1)
+Load Average: 2.51, 2.30, 2.27
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message
+"BENCH_SobelHardcodePowAndSqrtImplementation/0",594,1.17575e+06,1.1747e+06,ns,,,,,
+"BENCH_SobelHardcodePowAndSqrtImplementationTrim/0",595,1.18171e+06,1.18076e+06,ns,,,,,
