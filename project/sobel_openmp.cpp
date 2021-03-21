@@ -25,7 +25,7 @@ Mat preprocessing(Mat image)
     */
 
     // gaussian filter to remove noise
-    GaussianBlur(image, image, Size(3, 3), 0, 0);
+    // GaussianBlur(image, image, Size(3, 3), 0, 0);
 
     // pad image with 1 px of 0s
     Mat padded_image;
@@ -114,7 +114,6 @@ Mat sobel_float_array(Mat padded_image)
         output_array[i] = (float *)malloc(n_cols * sizeof(float));
     }
 
-    // float padded_array[padded_image.rows][padded_image.cols];
     float **padded_array = (float **)malloc(padded_image.rows * sizeof(float *));
     for (int i = 0; i < padded_image.rows; i++)
     {
@@ -160,8 +159,6 @@ Mat sobel_float_array(Mat padded_image)
 
     // Use opencv's normalization function
     cv::normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8U);
-
-    std::cout << "sobel float: " << end - start << std::endl;
 
     return output_image;
 }
@@ -629,12 +626,12 @@ Mat sobel_openmp_finegrain_dual_blocking(Mat padded_image)
 int main(int argc, char **argv)
 {
 
-    omp_set_num_threads(4); // TODO: change to input variable
+    omp_set_num_threads(1); // TODO: change to input variable
     std::cout << "num threads:  " << omp_get_max_threads() << std::endl;
 
     // read in image as grayscale
     // Mat is an OpenCV data structure
-    Mat raw_image = imread("images/frac3.png", IMREAD_GRAYSCALE);
+    Mat raw_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
 
     if (raw_image.empty())
     {
@@ -650,7 +647,7 @@ int main(int argc, char **argv)
 
     Mat padded_img = preprocessing(image);
 
-    Mat sobel_original_img = sobel_original(padded_img);
+    // Mat sobel_original_img = sobel_original(padded_img);
     // imwrite("sobel_original_img.jpg", sobel_original_img);
     // imshow("Detected Edges", sobel_original_img);
     // waitKey(0);
@@ -660,33 +657,32 @@ int main(int argc, char **argv)
     // imshow("Detected Edges", sobel_float_array_img);
     // waitKey(0);
 
-    Mat sobel_int_array_img = sobel_int_array(padded_img);
+    // Mat sobel_int_array_img = sobel_int_array(padded_img);
     // imwrite("sobel_int_array_img.jpg", sobel_int_array_img);
     // imshow("Detected Edges", sobel_int_array_img);
     // waitKey(0);
 
-    Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
+    // Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
     // imwrite("sobel_openmp_coarsegrain_img.jpg", sobel_openmp_coarsegrain_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_img);
     // waitKey(0);
 
-    Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
+    // Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
     // imwrite("sobel_openmp_coarsegrain_blocking_img.jpg", sobel_openmp_coarsegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_blocking_img);
     // waitKey(0);
 
-    Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
+    // Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
     // imwrite("sobel_openmp_finegrain_img.jpg", sobel_openmp_finegrain_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_img);
     // waitKey(0);
 
-    Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
+    // Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
     // imwrite("sobel_openmp_finegrain_blocking_img.jpg", sobel_openmp_finegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_blocking_img);
     // waitKey(0);
 
-    //sobel_openmp_finegrain_dual_blocking
-    Mat sobel_openmp_finegrain_dual_blocking_img = sobel_openmp_finegrain_dual_blocking(padded_img);
+    // Mat sobel_openmp_finegrain_dual_blocking_img = sobel_openmp_finegrain_dual_blocking(padded_img);
     // imwrite("sobel_openmp_finegrain_dual_blocking_img.jpg", sobel_openmp_finegrain_dual_blocking_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_dual_blocking_img);
     // waitKey(0);
