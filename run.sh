@@ -2,7 +2,7 @@
 
 git pull
 cd project
-mkdir outputs
+mkdir -p outputs
 g++ -std=c++17 sobel_simd.cpp -o sobel `pkg-config --cflags --libs opencv` -mavx -march=native
 
 perf stat -o ./outputs/simd_20000_basic.out -e task-clock,cycles,instructions,L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses ./sobel
