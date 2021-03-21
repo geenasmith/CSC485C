@@ -9,6 +9,7 @@
 #include "emmintrin.h" // SSE
 
 
+using namespace std;
 using namespace cv;
 
 /*
@@ -37,127 +38,93 @@ Mat sobel(Mat padded_image, int orig_cols, int orig_rows)
         Applies the sobel filtering to the padded image and normalizes to [0,255]
     */
 
+    const __m256i shift_left = _mm256_set_epi32(6, 5, 4, 3, 2, 1, 0, 0);
+    const __m256i shift_right = _mm256_set_epi32(7, 7, 6, 5, 4, 3, 2, 1);
+
     // Use array to store the image value
-    int16_t padded_array[padded_image.rows][padded_image.cols];
-    for (int i = 0; i < padded_image.rows; ++i)
-        for (int j = 0; j < padded_image.cols; ++j)
-            padded_array[i][j] = padded_image.at<int16_t>(i, j);
-
-    int n_rows = padded_image.rows;
-    int n_cols = padded_image.cols;
-
-    // output of convolution
-    int16_t output_image[n_rows][n_cols];
-
-    // loop through calculating G_x and G_y
-    // mag is sqrt(G_x^2 + G_y^2)
-    /*
-    for (auto r = 0; r < image.rows - 1; r++) {
-        for (auto c = 1; c < image.cols - 1; c+= 14) {
-
-
-            simd_ints r0 = simd_load(image[r][c-1:c+15]); // 16 pixels total
-            simd_ints r1 = simd_load(image[r+1][c-1:c+15]); // 16 pixels total. Calculated row
-            simd_ints r2 = simd_load(image[r+2][c-1:c+15]); // 16 pixels total
-
-            simd_ints colx = simd_add(r1, r1);
-            colx = simd_add(colx, r0);
-            colx = simd_add(colx, r2);
-
-            simd_ints mag_x = simd_subtract(simd_shift_right(colx), simd_shift_left(coly))
-
-            simd_ints mag_y = simd_subtract(r0, r2);
-            mag_y = simd_add(rowy, rowy); // the times 2 component
-            mag_y = simd_add(mag_y, simd_shift_right(mag_y));
-            mag_y = simd_add(mag_y, simd_shift_left(mag_y));
-
-            simd_ints g = simd_add(
-                simd_mult(mag_x, mag_x),
-                simd_mult(mag_y, mag_y),
-            )
-
-            return sqrt(g); // not sure how to approach this yet
-
+    int32_t padded_array[padded_image.rows][padded_image.cols];
+    int32_t padded_left[padded_image.rows][padded_image.cols];
+    int32_t padded_right[padded_image.rows][padded_image.cols];
+    for (int i = 0; i < padded_image.rows; ++i) {
+        for (int j = 0; j < padded_image.cols; ++j) {
+            padded_array[i][j] = padded_image.at<int32_t>(i, j);
+            // padded_left[i][j-1] = padded_image.at<int32_t>(i, j);
+            // padded_right[i][j+1] = padded_image.at<int32_t>(i, j);
         }
-    } */
-    for (int r = 0; r < n_rows; r++)
+    }
+    // output of convolution
+    float output_image[orig_rows][orig_cols];
+
+    for (int r = 0; r < orig_rows; r++)
     {
-        for (int c = 0; c < n_cols; c+=6)
+        for (int c = 0; c < orig_cols; c+=6)
         {
-            // _mm_loadu_si128: 6 | 0.5 -> maybe _mm_lddqu_si128 "when data crosses a cahce line boundary"
-            // _mm_add_epi16: 1 | 0.33
-            // _mm_sub_epi16: 1 | 0.33
-            // _mm_slli_epi16: 1 | 0.5
-            // _mm_srli_epi16: 1 | 0.5
-            // _mm256_cvtepi16_epi32  3 | 1
-            // _mm256_cvtepi32_ps -> 32int to 32f. might just be a direct cast
-
-
             // can try using 256i later, and then when doing the i->f conversion split into 2x 256sp
 
+            // load 3 rows of interest into 256ints
+            __m256i r0 = _mm256_loadu_si256((__m256i*) &(padded_array[r][c]));
+            __m256i r1 = _mm256_loadu_si256((__m256i*) &(padded_array[r+1][c])); // calculated row
+            __m256i r2 = _mm256_loadu_si256((__m256i*) &(padded_array[r+2][c]));
 
-            __m128i r0 = _mm_loadu_si128((__m128i*) &(output_image[r][c]));
-            __m128i r1 = _mm_loadu_si128((__m128i*) &(output_image[r+1][c])); // calculated row
-            __m128i r2 = _mm_loadu_si128((__m128i*) &(output_image[r+2][c]));
+            // cout << "act0\t\t"; for (int i = 0; i < 8; i++ ) std::cout << padded_array[r][c+i] << "\t"; cout << endl;
+            // cout << "act1\t\t"; for (int i = 0; i < 8; i++ ) std::cout << padded_array[r][c+i] << "\t"; cout << endl;
+            // cout << "act2\t\t"; for (int i = 0; i < 8; i++ ) std::cout << padded_array[r][c+i] << "\t"; cout << endl;
+            
+            // auto temp_ = reinterpret_cast< int * >( &r0 );
+            // cout << "r0\t\t"; for (int i = 0; i < 8; i++ ) std::cout << temp_[i] << "\t"; cout << endl;
+            // temp_ = reinterpret_cast< int * >( &r1 );
+            // cout << "r1\t\t"; for (int i = 0; i < 8; i++ ) std::cout << temp_[i] << "\t"; cout << endl;
+            // temp_ = reinterpret_cast< int * >( &r2 );
+            // cout << "r2\t\t"; for (int i = 0; i < 8; i++ ) std::cout << temp_[i] << "\t"; cout << endl;
 
             // Note: this should probably just be r1, not colx. saves 1 add
-            __m128i temp = _mm_add_epi16(r1, r1); // "times 2"
-            temp = _mm_add_epi16(temp, r0);
-            temp = _mm_add_epi16(temp, r2);
+            __m256i temp = _mm256_add_epi32(r1, r1); // "times 2"
+            temp = _mm256_add_epi32(temp, r0);
+            temp = _mm256_add_epi32(temp, r2);
 
-            __m128i mag_x = _mm_sub_epi16(_mm_srli_epi16(temp, 1), _mm_slli_epi16(temp, 1));
-            
-            __m128i mag_y = _mm_setzero_si128();
+            __m256i mag_x = _mm256_sub_epi32(_mm256_permutevar8x32_epi32(temp, shift_left),_mm256_permutevar8x32_epi32(temp, shift_right));
 
-            mag_y = _mm_add_epi16(r0, r0);
-            mag_y = _mm_sub_epi16(mag_y, r2);
-            mag_y = _mm_sub_epi16(mag_y, r2);
-            mag_y = _mm_sub_epi16(mag_y, _mm_slli_epi16(r2,1));
-            mag_y = _mm_add_epi16(mag_y, _mm_slli_epi16(r0,1));
-            mag_y = _mm_sub_epi16(mag_y, _mm_srli_epi16(r2,1));
-            mag_y = _mm_add_epi16(mag_y, _mm_srli_epi16(r0,1));
+            // temp_ = reinterpret_cast< int * >( &mag_x );
+            // cout << "mag_x\t\t"; for (int i = 1; i < 7; i++ ) std::cout << temp_[i] << "\t"; cout << endl;
 
-            _m256i g = _mm256_cvtepi16_epi32(mag_x), _mm256_cvtepi16_epi32 (mag_y)
-            
-            /*
-                Two routes for computing g.
+            __m256i mag_y = _mm256_add_epi32(r0, r0);
+            mag_y = _mm256_sub_epi32(mag_y, r2);
+            mag_y = _mm256_sub_epi32(mag_y, r2);
+            mag_y = _mm256_sub_epi32(mag_y, _mm256_permutevar8x32_epi32(r2,shift_left));
+            mag_y = _mm256_add_epi32(mag_y, _mm256_permutevar8x32_epi32(r0,shift_left));
+            mag_y = _mm256_sub_epi32(mag_y, _mm256_permutevar8x32_epi32(r2,shift_right));
+            mag_y = _mm256_add_epi32(mag_y, _mm256_permutevar8x32_epi32(r0,shift_right));
 
-                1: Convert to float using _mm256_cvtepi32_ps (check that valeus are correct and that it doesn't just cast)
-                Compute sqrt(x^2+y^2) as floats (fast)
+            // auto temp_ = reinterpret_cast< int * >( &mag_y );
+            // cout << "mag_y\t\t"; for (int i = 1; i < 7; i++ ) std::cout << temp_[i] << "\t"; cout << endl;
 
-                2: idk yet
-            */
+            __m256 fmx = _mm256_cvtepi32_ps(mag_x);
+            __m256 fmy = _mm256_cvtepi32_ps(mag_y);
+
+            __m256 g = _mm256_sqrt_ps(_mm256_add_ps(_mm256_mul_ps(fmx, fmx), _mm256_mul_ps(fmy, fmy)));
+            auto g2 = reinterpret_cast< float * >( &g );
+            for (int i = 1; i < 7; i++) output_image[r][c+i-1] = g2[i];
 
         }
     }
 
-    Mat sobel_image(n_rows, n_cols, CV_32F,);
+    Mat sobel_image(orig_rows, orig_cols, CV_32F, output_image);
+
 
     // normalize to 0-255
-    normalize(sobel_image, sobel_image, 0, 255, NORM_MINMAX, CV_8UC1);
+    normalize(sobel_image, sobel_image, 0, 255, NORM_MINMAX, CV_8U);
 
     return sobel_image;
 }
+
 
 int main(int argc, char **argv)
 {
     // read in image as grayscale
     // Mat is an OpenCV data structure
-    Mat raw_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
-
-    if (raw_image.empty())
-    {
-        std::cout << "Could not read image: " << argv[1] << std::endl;
-        return 1;
-    }
-
-    // convert image to CV_16S (equivalent to a int16_t)
-    Mat image;
-    raw_image.convertTo(image, CV_16S);
-
-    // gaussian filter to remove noise
-    GaussianBlur(image, image, Size(3, 3), 0, 0);
-
+    Mat image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    // GaussianBlur(image, image, Size(3, 3), 0, 0);
+    
     // store original image size
     auto n_rows = image.rows;
     auto n_cols = image.cols;
@@ -172,13 +139,33 @@ int main(int argc, char **argv)
     // pad image with 1 px of 0s
     Mat padded_image;
     copyMakeBorder(image, padded_image, 1, 1, 1, right_pad_width, BORDER_CONSTANT, 0);
+    padded_image.convertTo(padded_image, CV_32S);
+    
 
     // ----- Array Sobel Implementation -----
 
-    Mat sobel_img = sobel(padded_image, n_cols, n_rows);
+    auto sum = 0.0;
+    auto const num_trials = 20000u;
 
-    imshow("Image", sobel_img);
-    waitKey();
+    auto const start_time = std::chrono::system_clock::now();
+    Mat sobel_img;
+
+    for( auto i = 0u; i < num_trials; ++i )
+    {
+        sobel_img = sobel(padded_image, n_cols, n_rows);
+        sum += sobel_img.at<float>(rand() %200, rand() % 200);
+    }
+    std::cout << "notrelevant: " << sum << std::endl;
+
+    auto const end_time = std::chrono::system_clock::now();
+    auto const elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>( end_time - start_time );
+
+    std::cout << "avg time: " << ( elapsed_time.count() / static_cast< float >( num_trials ) ) << " us" << std::endl;
+    std::cout << "total time: " << ( elapsed_time.count() ) << " us on " << num_trials << " iterations" << std::endl;
+
+
+    // imshow("output", sobel_img);
+    // waitKey();
 
     return 0;
 }
