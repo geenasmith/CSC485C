@@ -46,6 +46,9 @@ float sqrt_impl(const float x)
     return u.x;
 }
 
+/*
+Baseline implementation
+*/
 Mat sobel_original(Mat padded_image)
 {
     // Define convolution kernels Gx and Gy
@@ -100,6 +103,9 @@ Mat sobel_original(Mat padded_image)
     return sobel_image;
 }
 
+/*
+Float array version
+*/
 Mat sobel_float_array(Mat padded_image)
 {
 
@@ -107,17 +113,20 @@ Mat sobel_float_array(Mat padded_image)
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    float **padded_array = (float **)malloc(padded_image.rows * sizeof(float *));
-    for (int i = 0; i < padded_image.rows; i++)
+    float **padded_array;
+    padded_array = new float *[padded_image.rows];
+    padded_array[0] = new float[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (float *)malloc(padded_image.cols * sizeof(float));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
@@ -145,7 +154,7 @@ Mat sobel_float_array(Mat padded_image)
                           padded_array[r + 2][c + 2] * -1;
 
             // Instead of Mat, store the value into an array
-            output_array[r][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
+            output_array[r][c] = sqrt(mag_x * mag_x + mag_y * mag_y);
         }
     }
 
@@ -160,9 +169,14 @@ Mat sobel_float_array(Mat padded_image)
     // Use opencv's normalization function
     cv::normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8U);
 
+    std::cout << "sobel float: " << end - start << std::endl;
+
     return output_image;
 }
 
+/*
+Integer array version with fast sqrt (final version in report 1)
+*/
 Mat sobel_int_array(Mat padded_image)
 {
 
@@ -170,26 +184,25 @@ Mat sobel_int_array(Mat padded_image)
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // Use array to store the image value
-    // float output_array[n_rows][n_cols];
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    // uint8_t padded_array[padded_image.rows][padded_image.cols];
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
         for (int j = 0; j < padded_image.cols; ++j)
             padded_array[i][j] = (uint8_t)padded_image.at<float>(i, j);
-
-    // Mat sobel_image(n_rows, n_cols, CV_32F);
 
     clock_t start = clock();
 
@@ -232,6 +245,9 @@ Mat sobel_int_array(Mat padded_image)
     return output_image;
 }
 
+/*
+Add openmp to parallelize by row
+*/
 Mat sobel_openmp_coarsegrain(Mat padded_image)
 {
 
@@ -239,17 +255,20 @@ Mat sobel_openmp_coarsegrain(Mat padded_image)
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
@@ -301,23 +320,29 @@ Mat sobel_openmp_coarsegrain(Mat padded_image)
     return output_image;
 }
 
+/*
+Add openmp to parallelize by groups of rows
+*/
 Mat sobel_openmp_coarsegrain_blocking(Mat padded_image)
 {
     // Filtered image definitions
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
@@ -374,6 +399,9 @@ Mat sobel_openmp_coarsegrain_blocking(Mat padded_image)
     return output_image;
 }
 
+/*
+Add openmp to parallelize by column within a row
+*/
 Mat sobel_openmp_finegrain(Mat padded_image)
 {
 
@@ -381,17 +409,20 @@ Mat sobel_openmp_finegrain(Mat padded_image)
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
@@ -443,6 +474,9 @@ Mat sobel_openmp_finegrain(Mat padded_image)
     return output_image;
 }
 
+/*
+Add openmp to parallelize by groups of columns within a row
+*/
 Mat sobel_openmp_finegrain_blocking(Mat padded_image)
 {
     // pad the right side of the padded image so n_rows is divisible by 8
@@ -461,19 +495,20 @@ Mat sobel_openmp_finegrain_blocking(Mat padded_image)
     int n_rows = padded_image.rows - 2;
     int n_cols = padded_image.cols - 2;
 
-    // std::cout << "padded size: " << n_rows << " by " << n_cols << std::endl;
-
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
+    float **output_array;
+    output_array = new float *[n_rows];
+    output_array[0] = new float[n_rows * n_cols];
+    for (int i = 1; i < n_rows; i++)
     {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
+        output_array[i] = output_array[i - 1] + n_cols;
     }
 
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
+        padded_array[i] = padded_array[i - 1] + padded_image.cols;
     }
 
     for (int i = 0; i < padded_image.rows; ++i)
@@ -531,107 +566,15 @@ Mat sobel_openmp_finegrain_blocking(Mat padded_image)
     return output_image;
 }
 
-Mat sobel_openmp_finegrain_dual_blocking(Mat padded_image)
-{
-    // pad the right side of the padded image so n_rows is divisible by 8
-    // keep track of the original size so we can trim after
-
-    int padding_amount = (padded_image.cols - 2) % 8;
-    // std::cout << "padding amount: " << padding_amount << std::endl;
-
-    int orig_n_rows = padded_image.rows - 2;
-    int orig_n_cols = padded_image.cols - 2;
-    // std::cout << "original size: " << orig_n_rows << " by " << orig_n_cols << std::endl;
-
-    copyMakeBorder(padded_image, padded_image, 0, 0, 0, padding_amount, BORDER_CONSTANT, 0);
-
-    // Filtered image definitions
-    int n_rows = padded_image.rows - 2;
-    int n_cols = padded_image.cols - 2;
-
-    // std::cout << "padded size: " << n_rows << " by " << n_cols << std::endl;
-
-    // Use array to store the image value
-    float **output_array = (float **)malloc(n_rows * sizeof(float *));
-    for (int i = 0; i < n_rows; i++)
-    {
-        output_array[i] = (float *)malloc(n_cols * sizeof(float));
-    }
-
-    uint8_t **padded_array = (uint8_t **)malloc(padded_image.rows * sizeof(uint8_t *));
-    for (int i = 0; i < padded_image.rows; i++)
-    {
-        padded_array[i] = (uint8_t *)malloc(padded_image.cols * sizeof(uint8_t));
-    }
-
-    for (int i = 0; i < padded_image.rows; ++i)
-        for (int j = 0; j < padded_image.cols; ++j)
-            padded_array[i][j] = (uint8_t)padded_image.at<float>(i, j);
-
-    clock_t start = clock();
-
-    auto const num_threads = omp_get_max_threads();
-    // std::cout << "num threads:  " << num_threads << std::endl;
-
-    // cacheline size is 64B
-    // block by 8 columns to reduce cache misses
-    for (int r = 0; r < n_rows; r += 8)
-    {
-#pragma omp parallel for
-        for (int c = 0; c < n_cols; c += 8)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                // #pragma omp parallel for
-
-                for (int k = 0; k < 8; k++)
-                {
-                    float mag_x = padded_array[r + k][c + j] * 1 +
-                                  padded_array[r + k][c + j + 2] * -1 +
-                                  padded_array[r + k + 1][c + j] * 2 +
-                                  padded_array[r + k + 1][c + j + 2] * -2 +
-                                  padded_array[r + k + 2][c + j] * 1 +
-                                  padded_array[r + k + 2][c + j + 2] * -1;
-
-                    float mag_y = padded_array[r + k][c + j] * 1 +
-                                  padded_array[r + k][c + j + 1] * 2 +
-                                  padded_array[r + k][c + j + 2] * 1 +
-                                  padded_array[r + k + 2][c + j] * -1 +
-                                  padded_array[r + k + 2][c + j + 1] * -2 +
-                                  padded_array[r + k + 2][c + j + 2] * -1;
-
-                    // Instead of Mat, store the value into an array
-                    output_array[r + k][c + j] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
-                }
-            }
-        }
-    }
-
-    clock_t end = clock();
-
-    // Have to write each pixel back to a Mat since we used malloc (not contiguous in memory anymore)
-    Mat output_image = Mat(orig_n_rows, orig_n_cols, CV_32F);
-    for (int i = 0; i < orig_n_rows; ++i)
-        for (int j = 0; j < orig_n_cols; ++j)
-            output_image.at<float>(i, j) = output_array[i][j];
-
-    // Use opencv's normalization function
-    cv::normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8U);
-
-    std::cout << "sobel openmp finegrain dual blocking: " << end - start << std::endl;
-
-    return output_image;
-}
-
 int main(int argc, char **argv)
 {
 
-    omp_set_num_threads(1); // TODO: change to input variable
+    omp_set_num_threads(2); // TODO: change to input variable
     std::cout << "num threads:  " << omp_get_max_threads() << std::endl;
 
     // read in image as grayscale
     // Mat is an OpenCV data structure
-    Mat raw_image = imread("images/rgb1.jpg", IMREAD_GRAYSCALE);
+    Mat raw_image = imread("images/frac3.png", IMREAD_GRAYSCALE);
 
     if (raw_image.empty())
     {
@@ -647,7 +590,7 @@ int main(int argc, char **argv)
 
     Mat padded_img = preprocessing(image);
 
-    // Mat sobel_original_img = sobel_original(padded_img);
+    Mat sobel_original_img = sobel_original(padded_img);
     // imwrite("sobel_original_img.jpg", sobel_original_img);
     // imshow("Detected Edges", sobel_original_img);
     // waitKey(0);
@@ -657,34 +600,29 @@ int main(int argc, char **argv)
     // imshow("Detected Edges", sobel_float_array_img);
     // waitKey(0);
 
-    // Mat sobel_int_array_img = sobel_int_array(padded_img);
+    Mat sobel_int_array_img = sobel_int_array(padded_img);
     // imwrite("sobel_int_array_img.jpg", sobel_int_array_img);
     // imshow("Detected Edges", sobel_int_array_img);
     // waitKey(0);
 
-    // Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
+    Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
     // imwrite("sobel_openmp_coarsegrain_img.jpg", sobel_openmp_coarsegrain_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_img);
     // waitKey(0);
 
-    // Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
+    Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
     // imwrite("sobel_openmp_coarsegrain_blocking_img.jpg", sobel_openmp_coarsegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_blocking_img);
     // waitKey(0);
 
-    // Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
+    Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
     // imwrite("sobel_openmp_finegrain_img.jpg", sobel_openmp_finegrain_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_img);
     // waitKey(0);
 
-    // Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
+    Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
     // imwrite("sobel_openmp_finegrain_blocking_img.jpg", sobel_openmp_finegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_blocking_img);
-    // waitKey(0);
-
-    // Mat sobel_openmp_finegrain_dual_blocking_img = sobel_openmp_finegrain_dual_blocking(padded_img);
-    // imwrite("sobel_openmp_finegrain_dual_blocking_img.jpg", sobel_openmp_finegrain_dual_blocking_img);
-    // imshow("Detected Edges", sobel_openmp_finegrain_dual_blocking_img);
     // waitKey(0);
 
     return 0;
