@@ -56,8 +56,8 @@ Mat sobel_original(Mat padded_image)
     int g_y[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
     // Filtered image definitions
-    int n_rows = padded_image.rows - 1;
-    int n_cols = padded_image.cols - 1;
+    int n_rows = padded_image.rows - 2;
+    int n_cols = padded_image.cols - 2;
     Mat sobel_image(n_rows, n_cols, CV_32F);
 
     // loop through calculating G_x and G_y
@@ -121,6 +121,9 @@ Mat sobel_float_array(Mat padded_image)
         output_array[i] = output_array[i - 1] + n_cols;
     }
 
+    // int rows = sizeof(output_array) / sizeof(float *);
+    // int cols = sizeof(output_array[1]) / sizeof(float *);
+
     float **padded_array;
     padded_array = new float *[padded_image.rows];
     padded_array[0] = new float[padded_image.rows * padded_image.cols];
@@ -161,6 +164,7 @@ Mat sobel_float_array(Mat padded_image)
     clock_t end = clock();
 
     // Have to write each pixel back to a Mat since we used malloc (not contiguous in memory anymore)
+    // Mat output_image = Mat(n_rows, n_cols, CV_32F, output_array);
     Mat output_image = Mat(n_rows, n_cols, CV_32F);
     for (int i = 0; i < output_image.rows; ++i)
         for (int j = 0; j < output_image.cols; ++j)
@@ -590,37 +594,37 @@ int main(int argc, char **argv)
 
     Mat padded_img = preprocessing(image);
 
-    Mat sobel_original_img = sobel_original(padded_img);
+    // Mat sobel_original_img = sobel_original(padded_img);
     // imwrite("sobel_original_img.jpg", sobel_original_img);
     // imshow("Detected Edges", sobel_original_img);
     // waitKey(0);
 
     Mat sobel_float_array_img = sobel_float_array(padded_img);
     // imwrite("sobel_float_array_img.jpg", sobel_float_array_img);
-    // imshow("Detected Edges", sobel_float_array_img);
-    // waitKey(0);
+    imshow("Detected Edges", sobel_float_array_img);
+    waitKey(0);
 
-    Mat sobel_int_array_img = sobel_int_array(padded_img);
+    // Mat sobel_int_array_img = sobel_int_array(padded_img);
     // imwrite("sobel_int_array_img.jpg", sobel_int_array_img);
     // imshow("Detected Edges", sobel_int_array_img);
     // waitKey(0);
 
-    Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
+    // Mat sobel_openmp_coarsegrain_img = sobel_openmp_coarsegrain(padded_img);
     // imwrite("sobel_openmp_coarsegrain_img.jpg", sobel_openmp_coarsegrain_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_img);
     // waitKey(0);
 
-    Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
+    // Mat sobel_openmp_coarsegrain_blocking_img = sobel_openmp_coarsegrain_blocking(padded_img);
     // imwrite("sobel_openmp_coarsegrain_blocking_img.jpg", sobel_openmp_coarsegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_coarsegrain_blocking_img);
     // waitKey(0);
 
-    Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
+    // Mat sobel_openmp_finegrain_img = sobel_openmp_finegrain(padded_img);
     // imwrite("sobel_openmp_finegrain_img.jpg", sobel_openmp_finegrain_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_img);
     // waitKey(0);
 
-    Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
+    // Mat sobel_openmp_finegrain_blocking_img = sobel_openmp_finegrain_blocking(padded_img);
     // imwrite("sobel_openmp_finegrain_blocking_img.jpg", sobel_openmp_finegrain_blocking_img);
     // imshow("Detected Edges", sobel_openmp_finegrain_blocking_img);
     // waitKey(0);
