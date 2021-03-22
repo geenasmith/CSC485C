@@ -24,11 +24,11 @@ float sqrt_impl(const float x)
     return u.x;
 }
 
-namespace floatArray
+namespace uint8Array
 {
-std::string implementation = base + "_" + "floatArray";
+std::string implementation = base + "_" + "uint8Array";
 
-std::tuple<float **, float **, int, int, int, int> preprocessing(std::string filename)
+std::tuple<uint8_t **, float **, int, int, int, int> preprocessing(std::string filename)
 {
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
     // convert image to CV_32F (equivalent to a float)
@@ -41,9 +41,9 @@ std::tuple<float **, float **, int, int, int, int> preprocessing(std::string fil
     Mat padded_image;
     copyMakeBorder(image, padded_image, 1, 1, 1, 1, BORDER_CONSTANT, 0);
 
-    float **padded_array;
-    padded_array = new float *[padded_image.rows];
-    padded_array[0] = new float[padded_image.rows * padded_image.cols];
+    uint8_t **padded_array;
+    padded_array = new uint8_t *[padded_image.rows];
+    padded_array[0] = new uint8_t[padded_image.rows * padded_image.cols];
     for (int i = 1; i < padded_image.rows; i++)
     {
         padded_array[i] = padded_array[i - 1] + padded_image.cols;
@@ -51,7 +51,7 @@ std::tuple<float **, float **, int, int, int, int> preprocessing(std::string fil
 
     for (int i = 0; i < padded_image.rows; ++i)
         for (int j = 0; j < padded_image.cols; ++j)
-            padded_array[i][j] = padded_image.at<float>(i, j);
+            padded_array[i][j] = (uint8_t)padded_image.at<float>(i, j);
 
     float **output_array;
     output_array = new float *[image.rows];
@@ -64,7 +64,7 @@ std::tuple<float **, float **, int, int, int, int> preprocessing(std::string fil
     return {padded_array, output_array, image.rows, image.cols, padded_image.rows, padded_image.cols};
 }
 
-void sobel(float **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
+void sobel(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
 {
     for (int r = 0; r < orig_n_rows; r++)
     {
@@ -85,10 +85,9 @@ void sobel(float **padded_array, float **output_array, int orig_n_rows, int orig
                           padded_array[r + 2][c + 2] * -1;
 
             // Instead of Mat, store the value into an array
-            output_array[r][c] = sqrt(mag_x * mag_x + mag_y * mag_y);
+            output_array[r][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
         }
     }
-
 }
 
 Mat postprocessing(float **output_array, int orig_n_rows, int orig_n_cols)
@@ -104,6 +103,6 @@ Mat postprocessing(float **output_array, int orig_n_rows, int orig_n_cols)
     return output_image;
 }
 
-} // namespace floatArray
+} // namespace uint8Array
 
 } // namespace report1
