@@ -5,6 +5,7 @@ cd project
 mkdir -p outputs
 mkdir -p outputs/simd
 mkdir -p outputs/basic
+mkdir -p bin
 
 g++ -std=c++17 sobel_nonsimd.cpp -o ./bin/sobel_nonsimd `pkg-config --cflags --libs opencv`
 g++ -std=c++17 sobel_simd.cpp -o ./bin/sobel_simd `pkg-config --cflags --libs opencv` -mavx -march=native
