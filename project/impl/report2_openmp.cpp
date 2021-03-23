@@ -5,17 +5,19 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <string>
+#include <omp.h>
 
 using namespace cv;
 
 /*
-auto [padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols] = report1::preprocessing("images/rgb1.jpg");
-report1::uint8Array::sobel(padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
-auto output_image = report1::postprocessing(output_array, orig_n_rows, orig_n_cols);
+auto [padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols] = report2::preprocessing("images/rgb1.jpg");
+report2::openmp::sobel_coarse(padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
+auto output_image = report2::postprocessing(output_array, orig_n_rows, orig_n_cols);
 */
-namespace report1
+
+namespace report2
 {
-std::string base = "report1";
+std::string base = "report2";
 
 float sqrt_impl(const float x)
 {
@@ -78,38 +80,13 @@ Mat postprocessing(float **output_array, int orig_n_rows, int orig_n_cols)
     return output_image;
 }
 
-namespace uint8Array
+namespace openmp
 {
-std::string implementation = base + "_" + "uint8Array";
+std::string implementation = base + "_" + "openmp";
 
-void sobel_sqrt(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
+void sobel_coarse(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
 {
-    for (int r = 0; r < orig_n_rows; r++)
-    {
-        for (int c = 0; c < orig_n_cols; c++)
-        {
-            float mag_x = padded_array[r][c] * 1 +
-                          padded_array[r][c + 2] * -1 +
-                          padded_array[r + 1][c] * 2 +
-                          padded_array[r + 1][c + 2] * -2 +
-                          padded_array[r + 2][c] * 1 +
-                          padded_array[r + 2][c + 2] * -1;
-
-            float mag_y = padded_array[r][c] * 1 +
-                          padded_array[r][c + 1] * 2 +
-                          padded_array[r][c + 2] * 1 +
-                          padded_array[r + 2][c] * -1 +
-                          padded_array[r + 2][c + 1] * -2 +
-                          padded_array[r + 2][c + 2] * -1;
-
-            // Instead of Mat, store the value into an array
-            output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
-        }
-    }
-}
-
-void sobel_fastsqrt(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
-{
+#pragma omp parallel for
     for (int r = 0; r < orig_n_rows; r++)
     {
         for (int c = 0; c < orig_n_cols; c++)
@@ -134,6 +111,66 @@ void sobel_fastsqrt(uint8_t **padded_array, float **output_array, int orig_n_row
     }
 }
 
-} // namespace uint8Array
+void sobel_coarse_blocking(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
+{
+    auto const num_threads = omp_get_max_threads();
+    int row_jump = orig_n_rows / num_threads;
 
-} // namespace report1
+#pragma omp parallel for
+    for (int r = 0; r < orig_n_rows; r += row_jump)
+    {
+        for (int j = r; j < orig_n_rows || j < (r + row_jump); j++)
+        {
+            for (int c = 0; c < orig_n_cols; c++)
+            {
+                float mag_x = padded_array[j][c] * 1 +
+                              padded_array[j][c + 2] * -1 +
+                              padded_array[j + 1][c] * 2 +
+                              padded_array[j + 1][c + 2] * -2 +
+                              padded_array[j + 2][c] * 1 +
+                              padded_array[j + 2][c + 2] * -1;
+
+                float mag_y = padded_array[j][c] * 1 +
+                              padded_array[j][c + 1] * 2 +
+                              padded_array[j][c + 2] * 1 +
+                              padded_array[j + 2][c] * -1 +
+                              padded_array[j + 2][c + 1] * -2 +
+                              padded_array[j + 2][c + 2] * -1;
+
+                // Instead of Mat, store the value into an array
+                output_array[j][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
+            }
+        }
+    }
+}
+
+void sobel_fine(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
+{
+    for (int r = 0; r < orig_n_rows; r++)
+    {
+#pragma omp parallel for
+        for (int c = 0; c < orig_n_cols; c++)
+        {
+            float mag_x = padded_array[r][c] * 1 +
+                          padded_array[r][c + 2] * -1 +
+                          padded_array[r + 1][c] * 2 +
+                          padded_array[r + 1][c + 2] * -2 +
+                          padded_array[r + 2][c] * 1 +
+                          padded_array[r + 2][c + 2] * -1;
+
+            float mag_y = padded_array[r][c] * 1 +
+                          padded_array[r][c + 1] * 2 +
+                          padded_array[r][c + 2] * 1 +
+                          padded_array[r + 2][c] * -1 +
+                          padded_array[r + 2][c + 1] * -2 +
+                          padded_array[r + 2][c + 2] * -1;
+
+            // Instead of Mat, store the value into an array
+            output_array[r][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
+        }
+    }
+}
+
+} // namespace openmp
+
+} // namespace report2

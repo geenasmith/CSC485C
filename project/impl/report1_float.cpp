@@ -8,6 +8,11 @@
 
 using namespace cv;
 
+/*
+auto [padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols] = report1::floatArray::preprocessing("images/rgb1.jpg");
+report1::floatArray::sobel(padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
+auto output_image = report1::floatArray::postprocessing(output_array, orig_n_rows, orig_n_cols);
+*/
 namespace report1
 {
 std::string base = "report1";
@@ -23,10 +28,6 @@ float sqrt_impl(const float x)
     u.i = (1 << 29) + (u.i >> 1) - (1 << 22);
     return u.x;
 }
-
-namespace floatArray
-{
-std::string implementation = base + "_" + "floatArray";
 
 std::tuple<float **, float **, int, int, int, int> preprocessing(std::string filename)
 {
@@ -64,6 +65,23 @@ std::tuple<float **, float **, int, int, int, int> preprocessing(std::string fil
     return {padded_array, output_array, image.rows, image.cols, padded_image.rows, padded_image.cols};
 }
 
+Mat postprocessing(float **output_array, int orig_n_rows, int orig_n_cols)
+{
+    Mat output_image = Mat(orig_n_rows, orig_n_cols, CV_32F);
+    for (int i = 0; i < output_image.rows; ++i)
+        for (int j = 0; j < output_image.cols; ++j)
+            output_image.at<float>(i, j) = output_array[i][j];
+
+    // Use opencv's normalization function
+    cv::normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8U);
+
+    return output_image;
+}
+
+namespace floatArray
+{
+std::string implementation = base + "_" + "floatArray";
+
 void sobel(float **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
 {
     for (int r = 0; r < orig_n_rows; r++)
@@ -88,20 +106,6 @@ void sobel(float **padded_array, float **output_array, int orig_n_rows, int orig
             output_array[r][c] = sqrt(mag_x * mag_x + mag_y * mag_y);
         }
     }
-
-}
-
-Mat postprocessing(float **output_array, int orig_n_rows, int orig_n_cols)
-{
-    Mat output_image = Mat(orig_n_rows, orig_n_cols, CV_32F);
-    for (int i = 0; i < output_image.rows; ++i)
-        for (int j = 0; j < output_image.cols; ++j)
-            output_image.at<float>(i, j) = output_array[i][j];
-
-    // Use opencv's normalization function
-    cv::normalize(output_image, output_image, 0, 255, NORM_MINMAX, CV_8U);
-
-    return output_image;
 }
 
 } // namespace floatArray

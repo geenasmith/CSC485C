@@ -8,13 +8,18 @@
 
 using namespace cv;
 
+/*
+
+g++ -std=c++17 -Xpreprocessor -fopenmp -lomp benchmark.cpp -o sobel `pkg-config --cflags --libs opencv`
+
+auto [padded_image, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols] = report1::baseline::preprocessing("images/rgb1.jpg");
+auto sobel_image = report1::baseline::sobel(padded_image, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
+auto output_image = report1::baseline::postprocessing(sobel_image);
+*/
+
 namespace report1
 {
 std::string base = "report1";
-
-namespace baseline
-{
-std::string implementation = base + "_" + "baseline";
 
 std::tuple<Mat, int, int, int, int> preprocessing(std::string filename)
 {
@@ -31,6 +36,18 @@ std::tuple<Mat, int, int, int, int> preprocessing(std::string filename)
 
     return {padded_image, image.rows, image.cols, padded_image.rows, padded_image.cols};
 }
+
+Mat postprocessing(Mat sobel_image)
+{
+    Mat output_image;
+    normalize(sobel_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
+
+    return output_image;
+}
+
+namespace baseline
+{
+std::string implementation = base + "_" + "baseline";
 
 Mat sobel(Mat padded_image, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
 {
@@ -71,14 +88,6 @@ Mat sobel(Mat padded_image, int orig_n_rows, int orig_n_cols, int padded_n_rows,
     }
 
     return sobel_image;
-}
-
-Mat postprocessing(Mat sobel_image)
-{
-    Mat output_image;
-    normalize(sobel_image, output_image, 0, 255, NORM_MINMAX, CV_8UC1);
-
-    return output_image;
 }
 
 } // namespace baseline
