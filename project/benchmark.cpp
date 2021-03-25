@@ -2,6 +2,7 @@
 #include "impl/report1_float.cpp"
 #include "impl/report1_uint8.cpp"
 #include "impl/report2_openmp.cpp"
+#include "impl/report2_simd.cpp"
 
 #include <omp.h>
 using namespace cv;
@@ -116,7 +117,7 @@ int main()
 
     // ----- openmp coarse -----
 
-    omp_set_num_threads(8); // TODO: change to input variable
+    omp_set_num_threads(6); // TODO: change to input variable
     std::cout << "num threads:  " << omp_get_max_threads() << std::endl;
 
     auto [padded_array3, output_array3, orig_n_rows3, orig_n_cols3, padded_n_rows3, padded_n_cols3] = report2OpenMP::preprocessing("images/rgb1.jpg");
@@ -177,6 +178,44 @@ int main()
 
     // imshow("test", output_image);
     // waitKey(0);
+
+    // ----- simd + openmp
+
+    auto [padded_array4, output_array4, orig_n_rows4, orig_n_cols4, padded_n_rows4, padded_n_cols4] = report2SIMD::preprocessing("images/rgb1.jpg");
+
+    sum = 0;
+    auto const start_time7 = std::chrono::system_clock::now();
+    for (auto i = 0u; i < benchmark_trials; ++i)
+    {
+        report2SIMD::openmp::sobel_simd(padded_array4, output_array4, orig_n_rows4, orig_n_cols4, padded_n_rows4, padded_n_cols4);
+        sum += output_array4[1][1];
+    }
+
+    auto const end_time7 = std::chrono::system_clock::now();
+    auto const elapsed_time7 = std::chrono::duration_cast<std::chrono::microseconds>(end_time7 - start_time7);
+
+    std::cout << "sum = " << (sum / static_cast<float>(benchmark_trials)) << std::endl;
+    std::cout << "simd only: average time per run: "
+              << elapsed_time7.count() / static_cast<float>(benchmark_trials)
+              << " us" << std::endl;
+
+    sum = 0;
+    auto const start_time8 = std::chrono::system_clock::now();
+    for (auto i = 0u; i < benchmark_trials; ++i)
+    {
+        report2SIMD::openmp::sobel_simd_openmpcoarse(padded_array4, output_array4, orig_n_rows4, orig_n_cols4, padded_n_rows4, padded_n_cols4);
+        sum += output_array4[1][1];
+    }
+
+    auto const end_time8 = std::chrono::system_clock::now();
+    auto const elapsed_time8 = std::chrono::duration_cast<std::chrono::microseconds>(end_time8 - start_time8);
+
+    std::cout << "sum = " << (sum / static_cast<float>(benchmark_trials)) << std::endl;
+    std::cout << "Openmp + simd: average time per run: "
+              << elapsed_time8.count() / static_cast<float>(benchmark_trials)
+              << " us" << std::endl;
+
+    auto output_image4 = report2SIMD::postprocessing(output_array4, orig_n_rows4, orig_n_cols4);
 
     return 0;
 }
