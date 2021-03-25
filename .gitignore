@@ -31,6 +31,7 @@
 *.out
 *.app
 project/sobel
+project/bin/
 
 # Dev stuff
 *DS_Store
@@ -38,5 +39,8 @@ project/sobel
 
 # Google benchmark
 benchmark/
-pkgconfig/opencv.pc
+pkgconfig/
 run.sh
+project/outputs/
+*.pc
+*.csv
