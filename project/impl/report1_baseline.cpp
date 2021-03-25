@@ -17,7 +17,7 @@ auto sobel_image = report1::baseline::sobel(padded_image, orig_n_rows, orig_n_co
 auto output_image = report1::baseline::postprocessing(sobel_image);
 */
 
-namespace report1
+namespace report1Baseline
 {
 std::string base = "report1";
 

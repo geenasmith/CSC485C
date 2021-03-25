@@ -13,7 +13,7 @@ auto [padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padde
 report1::floatArray::sobel(padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
 auto output_image = report1::floatArray::postprocessing(output_array, orig_n_rows, orig_n_cols);
 */
-namespace report1
+namespace report1Float
 {
 std::string base = "report1";
 
@@ -103,11 +103,11 @@ void sobel(float **padded_array, float **output_array, int orig_n_rows, int orig
                           padded_array[r + 2][c + 2] * -1;
 
             // Instead of Mat, store the value into an array
-            output_array[r][c] = sqrt(mag_x * mag_x + mag_y * mag_y);
+            output_array[r][c] = sqrt(pow(mag_x, 2) + pow(mag_y, 2));
         }
     }
 }
 
 } // namespace floatArray
 
-} // namespace report1
+} // namespace report1Float

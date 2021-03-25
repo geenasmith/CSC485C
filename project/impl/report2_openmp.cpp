@@ -15,7 +15,7 @@ report2::openmp::sobel_coarse(padded_array, output_array, orig_n_rows, orig_n_co
 auto output_image = report2::postprocessing(output_array, orig_n_rows, orig_n_cols);
 */
 
-namespace report2
+namespace report2OpenMP
 {
 std::string base = "report2";
 

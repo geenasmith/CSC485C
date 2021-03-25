@@ -13,7 +13,7 @@ auto [padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padde
 report1::uint8Array::sobel(padded_array, output_array, orig_n_rows, orig_n_cols, padded_n_rows, padded_n_cols);
 auto output_image = report1::postprocessing(output_array, orig_n_rows, orig_n_cols);
 */
-namespace report1
+namespace report1Uint8
 {
 std::string base = "report1";
 
