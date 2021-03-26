@@ -149,12 +149,10 @@ int report2_simd(std::string file_name="images/rgb1.jpg", uint benchmark_trials 
     if(display) imshow(VERS::implementation, postprocessing(image.output, image.orig_rows, image.orig_cols));
     return sum;
 }
-
-
-int report2_simd_uint8(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
+int report2_simd_ompcoarse(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
     #undef VERS
-    #define VERS report2SIMD::UInt8
-    auto image = preprocessing_uint8(file_name, 6);
+    #define VERS report2SIMD::OMPCoarse
+    auto image = preprocessing_int32(file_name, 6);
     // std::cout << image.orig_rows << " " << image.orig_cols << " | " << image.padded_rows << " " << image.padded_cols << std::endl;
 
     auto sum = 0;
@@ -171,11 +169,10 @@ int report2_simd_uint8(std::string file_name="images/rgb1.jpg", uint benchmark_t
     return sum;
 }
 
-
-int report2_simd_uint8_shuffle(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
+int report2_simd_ompfine(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
     #undef VERS
-    #define VERS report2SIMD::UInt8
-    auto image = preprocessing_uint8(file_name, 6);
+    #define VERS report2SIMD::OMPFine
+    auto image = preprocessing_int32(file_name, 6);
     // std::cout << image.orig_rows << " " << image.orig_cols << " | " << image.padded_rows << " " << image.padded_cols << std::endl;
 
     auto sum = 0;
@@ -191,6 +188,26 @@ int report2_simd_uint8_shuffle(std::string file_name="images/rgb1.jpg", uint ben
     if(display) imshow(VERS::implementation, postprocessing(image.output, image.orig_rows, image.orig_cols));
     return sum;
 }
+// int report2_simd_uint8(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
+//     #undef VERS
+//     #define VERS report2SIMD::UInt8
+//     auto image = preprocessing_uint8(file_name, 6);
+//     // std::cout << image.orig_rows << " " << image.orig_cols << " | " << image.padded_rows << " " << image.padded_cols << std::endl;
+
+//     auto sum = 0;
+//     auto start_time = std::chrono::system_clock::now();
+//     for (auto i = 0u; i < benchmark_trials; ++i)
+//     {
+//         VERS::sobel(image);
+//         sum += image.output[1][1];
+//     }
+//     auto end_time = std::chrono::system_clock::now();
+//     output_time(VERS::implementation, start_time, end_time, benchmark_trials, image.orig_rows, image.orig_cols);
+
+//     if(display) imshow(VERS::implementation, postprocessing(image.output, image.orig_rows, image.orig_cols));
+//     return sum;
+// }
+
 
 
 /*
@@ -248,7 +265,10 @@ int main(int argc, char **argv)
         sum += report2_simd(file_name, benchmark_trials, display_outputs);
         break;
     case 7:
-        sum += report2_simd_uint8(file_name, benchmark_trials, display_outputs);
+        sum += report2_simd_ompcoarse(file_name, benchmark_trials, display_outputs);
+        break;
+    case 7:
+        sum += report2_simd_ompfine(file_name, benchmark_trials, display_outputs);
         break;
     default:
         std::cout << "invalid test#" << std::endl;
