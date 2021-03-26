@@ -161,7 +161,7 @@ int main()
     auto const benchmark_trials = 1u;
     bool const display_outputs = true;
     omp_set_num_threads(2);
-    std::string file_name="images/baby_yoder.jpg";
+    std::string file_name="sampleset/frac2.png";
     // std::string file_name="images/frac2.png";
     
     // std::string file_name = "images/rgb1.jpg";
@@ -169,21 +169,21 @@ int main()
     /******************
      * Report 1 Bench *
      ******************/
-    sum += baseline(file_name, benchmark_trials, display_outputs);
+    // sum += baseline(file_name, benchmark_trials, display_outputs);
     // sum += report1_float(file_name, benchmark_trials, display_outputs);
-    // sum += report1_uint8(file_name, benchmark_trials, display_outputs);
+    sum += report1_uint8(file_name, benchmark_trials, display_outputs);
     // sum += report1_uint8_fastsqrt(file_name, benchmark_trials, display_outputs);
     
-    // // /******************
-    // //  * Report 2 OpenMP*
-    // //  ******************/
-    sum += report2_openmp_coarse(file_name, benchmark_trials, display_outputs);
+    /******************
+     * Report 2 OpenMP*
+     ******************/
+    // sum += report2_openmp_coarse(file_name, benchmark_trials, display_outputs);
     // sum += report2_openmp_fine(file_name, benchmark_trials, display_outputs);
 
     /******************
      * Report 2 SIMD  *
      ******************/
-    sum += report2_simd(file_name, benchmark_trials, display_outputs);
+    // sum += report2_simd(file_name, benchmark_trials, display_outputs);
 
 
     // /******************

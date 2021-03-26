@@ -41,7 +41,7 @@ struct Sobel_float {
  * # # # # # # # # - > # X X X X X X #
  */
 
-auto preprocessing_uint8(std::string filename, int subset = 0, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
+auto preprocessing_uint8(std::string filename, int subset = 1, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
 {
     Sobel_uint8 res;
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
@@ -53,10 +53,10 @@ auto preprocessing_uint8(std::string filename, int subset = 0, int right_pad=1, 
 
     // pad image with 1 px of 0s
     Mat padded_image;
-    right_pad = (subset > 1) ? (image.cols % subset) + right_pad : right_pad;
-    // auto right_pad_width = subset - (image.cols % subset) + right_pad; // for 16 values use 14. for 8 value use 6.
-
-    copyMakeBorder(image, padded_image, top_pad, bot_pad, left_pad, right_pad, BORDER_CONSTANT, 0);
+    
+    int pad_to_subset = (image.cols % subset == 0) ? 0 : subset - (image.cols % subset);
+    
+    copyMakeBorder(image, padded_image, top_pad, bot_pad, left_pad, pad_to_subset + right_pad, BORDER_CONSTANT, 0);
 
     res.input = new uint8_t *[padded_image.rows];
     res.input[0] = new uint8_t[padded_image.rows * padded_image.cols];
@@ -70,10 +70,10 @@ auto preprocessing_uint8(std::string filename, int subset = 0, int right_pad=1, 
             res.input[i][j] = (uint8_t)padded_image.at<float>(i, j);
 
     res.output = new float *[image.rows];
-    res.output[0] = new float[image.rows * image.cols + right_pad - 1];
-    for (int i = 1; i < image.rows; i++)
+    res.output[0] = new float[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        res.output[i] = res.output[i - 1] + image.cols + right_pad - 1;
+        res.output[i] = res.output[i - 1] + padded_image.cols;
     }
 
     res.orig_rows = image.rows;
@@ -83,11 +83,10 @@ auto preprocessing_uint8(std::string filename, int subset = 0, int right_pad=1, 
     return res;
 };
 
-auto preprocessing_int32(std::string filename, int subset = 6, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
+auto preprocessing_int32(std::string filename, int subset = 1, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
 {
     Sobel_int32 res;
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
-    resize(raw_image, raw_image, cv::Size(raw_image.cols-6, raw_image.rows), 0, 0);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
@@ -100,7 +99,7 @@ auto preprocessing_int32(std::string filename, int subset = 6, int right_pad=1, 
 
     // right_pad = (subset > 1) ? subset - (image.cols % subset) + right_pad : right_pad;
     
-    int pad_to_subset = (image.cols % 6 == 0) ? 0 : 6 - (image.cols % 6);
+    int pad_to_subset = (image.cols % subset == 0) ? 0 : subset - (image.cols % subset);
     
     copyMakeBorder(image, padded_image, top_pad, bot_pad, left_pad, pad_to_subset + right_pad, BORDER_CONSTANT, 0);
 
@@ -136,7 +135,7 @@ auto preprocessing_int32(std::string filename, int subset = 6, int right_pad=1, 
     return res;
 };
 
-auto preprocessing_float(std::string filename, int subset = 0, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
+auto preprocessing_float(std::string filename, int subset = 1, int right_pad=1, int left_pad=1, int top_pad=1, int bot_pad=1)
 {
     Sobel_float res;
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
@@ -148,9 +147,9 @@ auto preprocessing_float(std::string filename, int subset = 0, int right_pad=1, 
 
     // pad image with 1 px of 0s
     Mat padded_image;
-    right_pad = (subset > 1) ? (image.cols % subset) + right_pad : right_pad;
-
-    copyMakeBorder(image, padded_image, top_pad, bot_pad, left_pad, right_pad, BORDER_CONSTANT, 0);
+    int pad_to_subset = (image.cols % subset == 0) ? 0 : subset - (image.cols % subset);
+    
+    copyMakeBorder(image, padded_image, top_pad, bot_pad, left_pad, pad_to_subset + right_pad, BORDER_CONSTANT, 0);
 
     res.input = new float *[padded_image.rows];
     res.input[0] = new float[padded_image.rows * padded_image.cols];
@@ -164,11 +163,12 @@ auto preprocessing_float(std::string filename, int subset = 0, int right_pad=1, 
             res.input[i][j] = (float)padded_image.at<float>(i, j);
 
     res.output = new float *[image.rows];
-    res.output[0] = new float[image.rows * image.cols + right_pad - 1];
-    for (int i = 1; i < image.rows; i++)
+    res.output[0] = new float[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        res.output[i] = res.output[i - 1] + image.cols + right_pad - 1;
+        res.output[i] = res.output[i - 1] + padded_image.cols;
     }
+
 
     res.orig_rows = image.rows;
     res.orig_cols = image.cols;
