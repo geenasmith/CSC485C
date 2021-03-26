@@ -41,3 +41,21 @@ with open('perf_smid.csv', 'w', newline='') as csvfile:
                     data_list.append(line_list[0].replace(',', ''))
 
             writer.writerow(data_list)
+
+with open('perf_time.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Average time per run (us)', 'Input resolution'])
+    for filename in os.listdir(os.getcwd() + '/outputs/simd'):
+        with open(os.getcwd() + '/outputs/time/' + filename, 'r') as file:
+            lines = file.readlines()
+            data_list = []
+            data_list.append(filename)
+            for index, line in enumerate(lines):
+                if(index == 2):
+                    line_list = str.split(line)
+                    data_list.append(line_list[4])
+                elif(index == 3):
+                    line_list = str.split(line)
+                    data_list.append(line_list[2])
+
+            writer.writerow(data_list)

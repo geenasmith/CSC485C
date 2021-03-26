@@ -40,3 +40,7 @@ project/sobel
 benchmark/
 pkgconfig/opencv.pc
 run.sh
+
+# output data
+project/outputs
+*.csv
