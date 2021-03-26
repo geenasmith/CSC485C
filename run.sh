@@ -13,7 +13,7 @@ mkdir -p outputs/simd
 mkdir -p outputs/time
 g++ -std=c++17 benchmark.cpp -o ./sobel `pkg-config --cflags --libs opencv` -mavx -march=native -fopenmp
 
-for tc in "${test_cases[@]}"; do for img in "${images[@]}"; do for threads in "${thread_count[@]}"; do 
+for tc in "${test_cases[@]}"; do for threads in "${thread_count[@]}"; do for img in "${images[@]}"; do 
     perf stat -o ./outputs/basic/${img}_${tc}_${threads} -e task-clock,cycles,instructions,L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses ./sobel "sampleset/${img}" "$tc" "$threads" > ./outputs/time/${img}_${tc}_${threads}
     perf stat -o ./outputs/simd/${img}_${tc}_${threads} -e fp_arith_inst_retired.scalar_single,fp_arith_inst_retired.scalar_double,fp_arith_inst_retired.128b_packed_single,fp_arith_inst_retired.256b_packed_single ./sobel "sampleset/${img}" "$tc" "$threads"
 done; done; done
