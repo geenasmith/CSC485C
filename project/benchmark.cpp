@@ -267,7 +267,7 @@ int main(int argc, char **argv)
     case 7:
         sum += report2_simd_ompcoarse(file_name, benchmark_trials, display_outputs);
         break;
-    case 7:
+    case 8:
         sum += report2_simd_ompfine(file_name, benchmark_trials, display_outputs);
         break;
     default:
