@@ -218,13 +218,13 @@ int main(int argc, char **argv)
 {
 
     auto sum = 0;
-    auto const benchmark_trials = 1u;
+    auto const benchmark_trials = 50u;
     bool const display_outputs = false;
     
     // std::string file_name="sampleset/frac1.png";
     // std::string file_name="images/frac2.png";
     // std::string file_name = "images/rgb1.jpg";
-    
+
     std::string file_name = argv[1];
     int test_case = atoi(argv[2]);
     int threads = atoi(argv[3]);
@@ -270,6 +270,9 @@ int main(int argc, char **argv)
     case 8:
         sum += report2_simd_ompfine(file_name, benchmark_trials, display_outputs);
         break;
+    case 9:
+        sum += report2_simd_uint8(file_name, benchmark_trials, display_outputs);
+        break;
     default:
         std::cout << "invalid test#" << std::endl;
     }
@@ -286,7 +289,7 @@ int main(int argc, char **argv)
     //  * Report 2 OpenMP*
     //  ******************/
     // sum += report2_openmp_coarse(file_name, benchmark_trials, display_outputs);
-    // // sum += report2_openmp_fine(file_name, benchmark_trials, display_outputs);
+    // sum += report2_openmp_fine(file_name, benchmark_trials, display_outputs);
 
     // /******************
     //  * Report 2 SIMD  *
