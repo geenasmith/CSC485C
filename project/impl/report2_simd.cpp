@@ -37,7 +37,6 @@ void sobel(Sobel_int32 img)
         
         for (int c = 0; c < img.orig_cols; c+=6)
         {
-            // std::cout << "LOADING FROM " << r << "c" << c << std::endl;
             __m256i r0 = _mm256_loadu_si256((__m256i*) &(img.input[r][c]));
             __m256i r1 = _mm256_loadu_si256((__m256i*) &(img.input[r+1][c])); // calculated row
             __m256i r2 = _mm256_loadu_si256((__m256i*) &(img.input[r+2][c]));
@@ -62,11 +61,7 @@ void sobel(Sobel_int32 img)
             __m256 g = _mm256_sqrt_ps(_mm256_add_ps(_mm256_mul_ps(fmx, fmx), _mm256_mul_ps(fmy, fmy)));
 
             auto g2 = reinterpret_cast< float * >( &g );
-            for (int i = 1; i < 7; i++) {
-                img.output[r][c+i-1] = g2[i];
-                // std::cout << "writing at ["<<r<<"]["<<c<<"+"<<i<<"] -> ["<<r<<"]["<<c+i<<"]"<<std::endl;
-            }
-            // for (int i = 1; i < 7; i++) img.output[r][c] = g2[0];
+            for (int i = 1; i < 7; i++) img.output[r][c] = g2[0];
 
         }
     }

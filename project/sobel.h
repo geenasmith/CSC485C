@@ -87,7 +87,7 @@ auto preprocessing_int32(std::string filename, int subset = 6, int right_pad=1, 
 {
     Sobel_int32 res;
     Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
-    resize(raw_image, raw_image, cv::Size(raw_image.cols - 5, raw_image.rows), 0, 0);
+    resize(raw_image, raw_image, cv::Size(raw_image.cols-6, raw_image.rows), 0, 0);
 
     // convert image to CV_32F (equivalent to a float)
     Mat image;
@@ -115,18 +115,24 @@ auto preprocessing_int32(std::string filename, int subset = 6, int right_pad=1, 
         for (int j = 0; j < padded_image.cols; ++j)
             res.input[i][j] = (int32_t)padded_image.at<float>(i, j);
 
+    // res.output = new float *[image.rows];
+    // res.output[0] = new float[image.rows * (image.cols + pad_to_subset)];
+    // for (int i = 1; i < image.rows; i++)
+    // {
+    //     res.output[i] = res.output[i - 1] + image.cols + pad_to_subset;
+    // }
     res.output = new float *[image.rows];
-    res.output[0] = new float[image.rows * image.cols + pad_to_subset];
-    for (int i = 1; i < image.rows; i++)
+    res.output[0] = new float[padded_image.rows * padded_image.cols];
+    for (int i = 1; i < padded_image.rows; i++)
     {
-        res.output[i] = res.output[i - 1] + image.cols + pad_to_subset;
+        res.output[i] = res.output[i - 1] + padded_image.cols;
     }
 
     res.orig_rows = image.rows;
     res.orig_cols = image.cols;
     res.padded_rows = padded_image.rows;
     res.padded_cols = padded_image.cols;
-    printf("subset %d | rpad %d | lpad %d | tpad %d | bpad %d \n", subset, pad_to_subset + right_pad, left_pad, top_pad, bot_pad);
+    // printf("subset %d | rpad %d | lpad %d | tpad %d | bpad %d \n", subset, pad_to_subset + right_pad, left_pad, top_pad, bot_pad);
     return res;
 };
 

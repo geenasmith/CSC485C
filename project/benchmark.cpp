@@ -133,7 +133,7 @@ int report2_simd(std::string file_name="images/rgb1.jpg", uint benchmark_trials 
     #undef VERS
     #define VERS report2SIMD::Original
     auto image = preprocessing_int32(file_name, 6);
-    std::cout << image.orig_rows << " " << image.orig_cols << " | " << image.padded_rows << " " << image.padded_cols << std::endl;
+    // std::cout << image.orig_rows << " " << image.orig_cols << " | " << image.padded_rows << " " << image.padded_cols << std::endl;
 
     auto sum = 0;
     auto start_time = std::chrono::system_clock::now();
@@ -158,7 +158,7 @@ int main()
 {
 
     auto sum = 0;
-    auto const benchmark_trials = 100u;
+    auto const benchmark_trials = 1u;
     bool const display_outputs = false;
     omp_set_num_threads(2);
     // std::string file_name="images/baby_yoder.jpg";
@@ -169,16 +169,16 @@ int main()
     /******************
      * Report 1 Bench *
      ******************/
-    sum += baseline(file_name, benchmark_trials, display_outputs);
-    sum += report1_float(file_name, benchmark_trials, display_outputs);
-    sum += report1_uint8(file_name, benchmark_trials, display_outputs);
-    sum += report1_uint8_fastsqrt(file_name, benchmark_trials, display_outputs);
+    // sum += baseline(file_name, benchmark_trials, display_outputs);
+    // sum += report1_float(file_name, benchmark_trials, display_outputs);
+    // sum += report1_uint8(file_name, benchmark_trials, display_outputs);
+    // sum += report1_uint8_fastsqrt(file_name, benchmark_trials, display_outputs);
     
-    // /******************
-    //  * Report 2 OpenMP*
-    //  ******************/
+    // // /******************
+    // //  * Report 2 OpenMP*
+    // //  ******************/
     sum += report2_openmp_coarse(file_name, benchmark_trials, display_outputs);
-    sum += report2_openmp_fine(file_name, benchmark_trials, display_outputs);
+    // sum += report2_openmp_fine(file_name, benchmark_trials, display_outputs);
 
     /******************
      * Report 2 SIMD  *
@@ -192,7 +192,7 @@ int main()
     // sum += report2_simd(file_name, benchmark_trials, display_outputs);
 
     
-    waitKey(0);
+    if(display_outputs) waitKey(0);
 
     std::cout << "Not Relevant: " << sum << std::endl; 
     return 0;
