@@ -54,6 +54,50 @@ namespace report2OpenMP {
             }
         }
     }
+    // namespace coarse {
+    // std::string implementation = base + "_" + "coarse";
+    
+    // void sobel(SobelDims img, uint8_t **input, float **output)
+    // {
+        
+    //     // for (int i = 0; i < 2160; i++) {
+    //     //     std::cout<<i;
+    //     //     for (int j = 0; j < 3840; j++) {
+    //     //         std::cout <<" " <<input[i][j];
+    //     //     }
+    //     //     std::cout<<std::endl;
+    //     // }
+    //     std::cout << output[0][0] << std::endl;
+
+    //     // #pragma omp parallel for
+    //     for (int r = 0; r < img.orig_rows; r++)
+    //     {
+    //         std::cout << "row" << r;
+    //         for (int c = 0; c < img.orig_cols; c++)
+    //         {
+    //             std::cout << " " << c;
+    //             float mag_x = input[r][c] * 1 +
+    //                         input[r][c + 2] * -1 +
+    //                         input[r + 1][c] * 2 +
+    //                         input[r + 1][c + 2] * -2 +
+    //                         input[r + 2][c] * 1 +
+    //                         input[r + 2][c + 2] * -1;
+
+    //             float mag_y = input[r][c] * 1 +
+    //                         input[r][c + 1] * 2 +
+    //                         input[r][c + 2] * 1 +
+    //                         input[r + 2][c] * -1 +
+    //                         input[r + 2][c + 1] * -2 +
+    //                         input[r + 2][c + 2] * -1;
+
+    //             // Instead of Mat, store the value into an array
+    //             output[r][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
+
+    //         }
+    //         std::cout << std::endl;
+    //     }
+    // }
+    // }
 
     // namespace coarse_blocking {
     //     std::string implementation = base + "_" + "coarse_blocking";

@@ -1,0 +1,6 @@
+IMAGE: sampleset/frac8.png TEST_CASE: 1 NUM_THREADS: 1
+report1_floatArray with 2 trials
+Average time per run: 4060 us
+Input resolution 384x216
+
+Not Relevant: 306

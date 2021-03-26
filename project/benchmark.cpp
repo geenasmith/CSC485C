@@ -46,6 +46,8 @@ int report1_float(std::string file_name="images/rgb1.jpg", uint benchmark_trials
         VERS::sobel(image);
         sum += image.output[1][1];
     }
+
+    
     auto end_time = std::chrono::system_clock::now();
     output_time(VERS::implementation, start_time, end_time, benchmark_trials, image.orig_rows, image.orig_cols);
 
@@ -109,6 +111,36 @@ int report2_openmp_coarse(std::string file_name="images/rgb1.jpg", uint benchmar
     if(display) imshow(VERS::implementation, postprocessing(image.output, image.orig_rows, image.orig_cols));
     return sum;
 }
+
+// int report2_openmp_coarse(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
+//     #undef VERS
+//     #define VERS report2OpenMP::coarse
+//     uint8_t **input;
+//     float **output;
+//     auto image = new_preprocess<uint8_t>(file_name, input, output);
+
+//     auto sum = 0;
+//     auto start_time = std::chrono::system_clock::now();
+//     for (auto i = 0u; i < benchmark_trials; ++i)
+//     {
+//         std::cout << "iter start" << std::endl;
+//         VERS::sobel(image, input, output);
+//         std::cout << "done" << std::endl;
+//         sum += output[1][1];
+//     }
+
+//     std::cout << "predel" << std::endl;
+//     delete2DArray(input);
+//     std::cout << "delin" << std::endl;
+//     delete2DArray(output);
+//     std::cout << "delout" << std::endl;
+
+//     auto end_time = std::chrono::system_clock::now();
+//     output_time(VERS::implementation, start_time, end_time, benchmark_trials, image.orig_rows, image.orig_cols);
+
+//     if(display) imshow(VERS::implementation, postprocessing(output, image.orig_rows, image.orig_cols));
+//     return sum;
+// }
 
 int report2_openmp_fine(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
     #undef VERS
