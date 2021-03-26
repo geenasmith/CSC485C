@@ -61,7 +61,7 @@ void sobel(Sobel_int32 img)
             __m256 g = _mm256_sqrt_ps(_mm256_add_ps(_mm256_mul_ps(fmx, fmx), _mm256_mul_ps(fmy, fmy)));
 
             auto g2 = reinterpret_cast< float * >( &g );
-            for (int i = 1; i < 7; i++) img.output[r][c] = g2[0];
+            for (int i = 1; i < 7; i++) img.output[r][c+i-1] = g2[i];
 
         }
     }
