@@ -3,12 +3,19 @@ export PKG_CONFIG_PATH=/home/jasparke/CSC485C/pkgconfig
 # g++ -std=c++17 benchmark.cpp -o test_run -mavx -march=native -fopenmp `pkg-config --cflags --libs opencv` -lpthread
 
 
+# # full run.
 declare -a images=("frac0.png" "frac1.png" "frac2.png" "frac3.png" "frac4.png" "frac5.png" "frac6.png" "frac7.png" "frac8.png" "frac9.png")
+# declare -a test_cases=("1" "2" "3" "4" "5" "6" "7" "8")
+# declare -a thread_count=("1" "2" "4" "6" "12")
+
+
+# declare -a images=("new-4000x2250.jpg" "new-3200-1800.jpg" "new-2800-1575.jpg" "new-2400-1350.jpg" "new-2000-1125.jpg" "new-1600-900.jpg" "new-1200-675.jpg" "new-800-450.jpg" "new-400-225.jpg" "new-200-114.jpg")
+
+
 declare -a test_cases=("1" "2" "3" "4" "5" "6" "7" "8")
 declare -a thread_count=("1" "2" "4" "6" "12")
 
 # cd project
-mkdir -p outputs
 mkdir -p outputs/basic
 mkdir -p outputs/simd
 mkdir -p outputs/time

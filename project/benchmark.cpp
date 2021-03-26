@@ -271,7 +271,7 @@ int main(int argc, char **argv)
         sum += report2_simd_ompfine(file_name, benchmark_trials, display_outputs);
         break;
     case 9:
-        sum += report2_simd_uint8(file_name, benchmark_trials, display_outputs);
+        // sum += report2_simd_uint8(file_name, benchmark_trials, display_outputs);
         break;
     default:
         std::cout << "invalid test#" << std::endl;
