@@ -7,7 +7,7 @@ with open('perf_stat.csv', 'w', newline='') as csvfile:
     ]
     writer = csv.writer(csvfile)
     writer.writerow(['filename', 'task-clock (mse)', 'CPUs utilized', 'Cycles', 'Instructions', 'IPC', 'L1-dcache-loads', 'L1-dcache-load-misses', 'L1-dcache miss rate', 'LLC-loads', 'LLC-load-misses', 'LLC miss rate',
-        'fp_arith_inst_retired.scalar_single', 'fp_arith_inst_retired.scalar_double', 'fp_arith_inst_retired.128b_packed_single', 'fp_arith_inst_retired.256b_packed_single',
+        'scalar_single', 'scalar_double', '128b_packed_single', '256b_packed_single',
         'Average time per run (us)', 'Input resolution'
     ])
     for filename in os.listdir(os.getcwd() + '/outputs/basic'):
