@@ -218,7 +218,7 @@ int main(int argc, char **argv)
 {
 
     auto sum = 0;
-    auto const benchmark_trials = 50u;
+    auto const benchmark_trials = 10u;
     bool const display_outputs = false;
     
     // std::string file_name="sampleset/frac1.png";
