@@ -37,6 +37,62 @@ struct Sobel_float {
     float **output;
 };
 
+struct Sobel_uint8_gpu {
+    int orig_rows = 0;
+    int orig_cols = 0;
+    int padded_rows = 0;
+    int padded_cols = 0;
+    
+    uint8_t *input;
+    float *output;
+};
+
+auto preprocessing_uint8_gpu(std::string filename, int tile_size)
+{
+    Sobel_uint8_gpu res;
+    Mat raw_image = imread(filename, IMREAD_GRAYSCALE);
+    // convert image to CV_32F (equivalent to a float)
+    Mat image;
+    raw_image.convertTo(image, CV_8UC1);
+    // gaussian filter to remove noise
+    // GaussianBlur(image, image, Size(3, 3), 0, 0);
+
+    // pad image with 1 px of 0s
+    Mat padded_image;
+
+    /**
+     * Right side padding must be at LEAST 1, and also make the total image be divisible by block_size
+     * Bottom side padding must follow the same
+     * 
+     * image is x,y
+     * 
+     */
+    int y = image.rows;
+    int x = image.cols;
+    int xmod = (x % 32 == 0) ? 0 : x % 32;
+    int ymod = (y % 32 == 0) ? 0 : y % 32;
+
+    copyMakeBorder(image, padded_image, 1, ymod+1, 1, xmod+1, BORDER_CONSTANT, 0);
+
+    res.input = new uint8_t[padded_image.rows * padded_image.cols];
+    std::cout << "TEST"<< std::endl;
+
+    for (int i = 0; i < padded_image.rows; ++i)
+        for (int j = 0; j < padded_image.cols; ++j)
+            res.input[i * padded_image.rows + j] = (uint8_t)padded_image.at<uint8_t>(i, j);
+
+    res.output = new float [image.rows*image.cols];
+    for (int i = 0; i < image.rows; i++)
+        for (int j = 0; j < image.cols; j++)
+            res.output[i * image.cols + j] = 0.0;
+
+    res.orig_rows = image.rows;
+    res.orig_cols = image.cols;
+    res.padded_rows = padded_image.rows;
+    res.padded_cols = padded_image.cols;
+    return res;
+};
+
 /* Subset of 6 means compute innermost X pixels with simd.
  * # # # # # # # # - > # X X X X X X #
  */
