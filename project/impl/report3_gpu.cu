@@ -25,7 +25,7 @@ namespace uint8FastSqrt
             int i;
             float x;
         } u;
-
+        
         u.x = x;
         u.i = (1 << 29) + (u.i >> 1) - (1 << 22);
         return u.x;
@@ -87,6 +87,10 @@ namespace GPUBaseline
         int r1 = (y + 1) * p_cols;
         int r2 = (y + 2) * p_cols;
 
+        /**
+         * The input and output arrays are offset by 1 pixel. 
+         * So when computing output at (0,0) we are centered on the input pixel (1,1) due to padding
+         */
         if (x < cols && y < rows) {
             float mag_x = input[r0 + x]
                         - input[r0 + x + 2]
@@ -115,9 +119,8 @@ void output_time(std::string name, std::chrono::system_clock::time_point start, 
     std::cout << "Input resolution " << w << "x" << h << std::endl << std::endl;
 }
 /**
-    * Host code and preprocessor
-    */
-
+ * Host code and preprocessor
+ */
 int gpu_runner(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 2000u, bool display = true) {
 
     #undef VERS
@@ -129,41 +132,38 @@ int gpu_runner(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 
     const int blocksize = 512; // mult of 32
     int num_blocks = ceil(image.orig_rows * image.orig_cols / blocksize);
 
-    for (auto i = 0u; i < benchmark_trials; ++i)
-    {
-        /* 0 the output array */
-        for (int i = 0; i < image.orig_rows; i++)
-            for (int j = 0; j < image.orig_cols; j++)
-                image.output[i * image.orig_cols + j] = 0.5;
+    // for (auto i = 0u; i < benchmark_trials; ++i)
+    // {
+    /* 0 the output array */
+    for (int i = 0; i < image.orig_rows; i++)
+        for (int j = 0; j < image.orig_cols; j++)
+            image.output[i * image.orig_cols + j] = 0.0;
 
-        uint8_t* dev_in;
-        float* dev_out;
-        cudaMalloc((void**) &dev_in, sizeof(image.input));
-        cudaMalloc((void**) &dev_out, sizeof(image.output));
-        cudaMemcpy(dev_in, image.input, sizeof(image.input), cudaMemcpyHostToDevice);
+    uint8_t* dev_in;
+    float* dev_out;
+    cudaMalloc((void**) &dev_in, sizeof(image.input));
+    cudaMalloc((void**) &dev_out, sizeof(image.output));
+    cudaMemcpy(dev_in, image.input, sizeof(image.input), cudaMemcpyHostToDevice);
 
-        // auto start_time = std::chrono::system_clock::now();
-        VERS::sobel<<< num_blocks, blocksize >>>(dev_in, dev_out, image.padded_rows, image.padded_cols, image.orig_rows, image.orig_cols);
-        // auto end_time = std::chrono::system_clock::now();
+    VERS::sobel<<< num_blocks, blocksize >>>(dev_in, dev_out, image.padded_rows, image.padded_cols, image.orig_rows, image.orig_cols);
 
-        cudaMemcpy( image.output, dev_out, sizeof(image.output), cudaMemcpyDeviceToHost );
+    cudaMemcpy( image.output, dev_out, sizeof(image.output), cudaMemcpyDeviceToHost );
 
-        for (int j = 0; j < 32; j++) {
-            for (int i = 0; i < 32; i++) {
-                std::cout << unsigned(image.input[j*image.orig_cols+i]) << " ";
-            }
-            std::cout << std::endl;
+    for (int j = 0; j < 32; j++) {
+        for (int i = 0; i < 32; i++) {
+            std::cout << unsigned(image.input[j*image.orig_cols+i]) << " ";
         }
-        std::cout << "TEST"<< std::endl;
-        cudaFree(dev_in);
-        cudaFree(dev_out);
-        sum += image.output[1];
-        std::cout << "END"<< std::endl;
-
+        std::cout << std::endl;
     }
+
+    cudaFree(dev_in);
+    cudaFree(dev_out);
+
+    sum += image.output[1];
+    // }
     
     if(display) imwrite("out.jpg", report3::GPUBaseline::postprocessing(image.output, image.orig_rows, image.orig_cols));
-    std::cout << "TEST"<< std::endl;
+    std::cout << "END ITER: " << sum << std::endl;
     return sum;
 }
 
