@@ -15,12 +15,10 @@ using namespace std;
 
 __global__ void image_darken(const float *img, float *out_img, const float mult, int rows, int cols) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-
-    // if (x < cols && y < rows) {
-    //     out_img[y * cols + x] *= mult;
-    // }
-    out_img[0] = 1;
+    // int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x < cols * rows) {
+        out_img[x] = img[x] * mult;
+    }
 }
 
 void printdata(float* data, int cols, int rm, int cm) {
@@ -49,7 +47,6 @@ int main(){
     for (int r = 0; r < img.rows; r++)
         for (int c = 0; c < img.cols; c++) {
             input[r*img.cols + c] = img.at<float>(r,c);
-            output[r*img.cols + c] = 0;
         }
 
     // Allocate device memory
@@ -58,14 +55,16 @@ int main(){
 
     // Transfer data from host to device memory
     cudaMemcpy(dev_input, input, sizeof(float) * N, cudaMemcpyHostToDevice);
-    cudaMemcpy(dev_output, output, sizeof(float) * N, cudaMemcpyHostToDevice);
 
     // Executing kernel 
-    image_darken<<<1,1>>>(dev_input, dev_output, 0.5, img.rows, img.cols);
+    int blocksize = 32;
+    int numblocks = ceil(N / 32);
+
+    image_darken<<<320*240, 1>>>(dev_input, dev_output, 0.5, img.rows, img.cols);
     
     cudaError_t cudaerror = cudaDeviceSynchronize(); // waits for completion, returns error code
-    printf("OUTPUT_BEFORE_SAVE\n");
-    printdata(output, img.cols, 32,32);
+    printf("INPUT\n");
+    printdata(input, img.cols, 32,32);
 
 
     // Transfer data back to host memory

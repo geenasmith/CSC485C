@@ -8,55 +8,12 @@
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 
-#include "../sobel.h"
+// #include "../sobel.h"
 
 using namespace cv;
 
 namespace report3 {
 std::string base = "report3";
-
-namespace uint8FastSqrt
-{
-    std::string implementation = base + "_" + "uint8FastSqrt";
-
-    float sqrt_impl(const float x)
-    {
-        union {
-            int i;
-            float x;
-        } u;
-        
-        u.x = x;
-        u.i = (1 << 29) + (u.i >> 1) - (1 << 22);
-        return u.x;
-    }
-
-    void sobel_fastsqrt(uint8_t **padded_array, float **output_array, int orig_n_rows, int orig_n_cols, int padded_n_rows, int padded_n_cols)
-    {
-        for (int r = 0; r < orig_n_rows; r++)
-        {
-            for (int c = 0; c < orig_n_cols; c++)
-            {
-                float mag_x = padded_array[r][c] * 1 +
-                            padded_array[r][c + 2] * -1 +
-                            padded_array[r + 1][c] * 2 +
-                            padded_array[r + 1][c + 2] * -2 +
-                            padded_array[r + 2][c] * 1 +
-                            padded_array[r + 2][c + 2] * -1;
-
-                float mag_y = padded_array[r][c] * 1 +
-                            padded_array[r][c + 1] * 2 +
-                            padded_array[r][c + 2] * 1 +
-                            padded_array[r + 2][c] * -1 +
-                            padded_array[r + 2][c + 1] * -2 +
-                            padded_array[r + 2][c + 2] * -1;
-
-                // Instead of Mat, store the value into an array
-                output_array[r][c] = sqrt_impl(mag_x * mag_x + mag_y * mag_y);
-            }
-        }
-    }
-} // namespace uint8Array
 
 namespace GPUBaseline
 {
@@ -82,7 +39,6 @@ namespace GPUBaseline
     {
         int x = threadIdx.x + blockIdx.x * blockDim.x;
         int y = threadIdx.y + blockIdx.y * blockDim.y;
-
         int r0 = y * p_cols;
         int r1 = (y + 1) * p_cols;
         int r2 = (y + 2) * p_cols;
@@ -92,6 +48,8 @@ namespace GPUBaseline
          * So when computing output at (0,0) we are centered on the input pixel (1,1) due to padding
          */
         if (x < cols && y < rows) {
+            // output[y*cols + x] = (float)input[y * cols + x] * 0.5;
+            // printf("%f", input[y*cols + x]);
             float mag_x = input[r0 + x]
                         - input[r0 + x + 2]
                         + input[r1 + x] * 2
@@ -125,44 +83,79 @@ int gpu_runner(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 
 
     #undef VERS
     #define VERS report3::GPUBaseline
+    Mat image = imread(file_name, IMREAD_GRAYSCALE);
+    Mat padded;
+    int rows = image.rows;
+    int cols = image.cols;
 
-    auto sum = 0;
-    auto image = preprocessing_uint8_gpu(file_name, 32);
-
-    const int blocksize = 512; // mult of 32
-    int num_blocks = ceil(image.orig_rows * image.orig_cols / blocksize);
-
-    // for (auto i = 0u; i < benchmark_trials; ++i)
-    // {
-    /* 0 the output array */
-    for (int i = 0; i < image.orig_rows; i++)
-        for (int j = 0; j < image.orig_cols; j++)
-            image.output[i * image.orig_cols + j] = 0.0;
-
-    uint8_t* dev_in;
-    float* dev_out;
-    cudaMalloc((void**) &dev_in, sizeof(image.input));
-    cudaMalloc((void**) &dev_out, sizeof(image.output));
-    cudaMemcpy(dev_in, image.input, sizeof(image.input), cudaMemcpyHostToDevice);
-
-    VERS::sobel<<< num_blocks, blocksize >>>(dev_in, dev_out, image.padded_rows, image.padded_cols, image.orig_rows, image.orig_cols);
-
-    cudaMemcpy( image.output, dev_out, sizeof(image.output), cudaMemcpyDeviceToHost );
-
-    for (int j = 0; j < 32; j++) {
-        for (int i = 0; i < 32; i++) {
-            std::cout << unsigned(image.input[j*image.orig_cols+i]) << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    cudaFree(dev_in);
-    cudaFree(dev_out);
-
-    sum += image.output[1];
-    // }
+    printf("Test");
+    /** CONFIGURATION **/
+    /**
+     * pixelsPerBlock is specifying 32x16 block of pixels:
+     * - 2048 bytes float
+     * - 32*16 = 512 -> max block size
+     */
+    dim3 pixels_per_block(32,16);
+    dim3 num_blocks(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
     
-    if(display) imwrite("out.jpg", report3::GPUBaseline::postprocessing(image.output, image.orig_rows, image.orig_cols));
+    /**
+     * PREPROCESSING
+     */
+    image.convertTo(image, CV_8UC1);
+    GaussianBlur(image, image,Size(3, 3), 0, 0);
+    
+    /**
+     * Right side padding must be at LEAST 1, and also make the total image be divisible by block_size
+     * Bottom side padding must follow the same
+     */
+    int N = rows * cols;
+    int xmod = (cols % 32 == 0) ? 0 : cols % 32;
+    int ymod = (rows % 32 == 0) ? 0 : rows % 32;
+    copyMakeBorder(image, padded, 1, ymod+1, 1, xmod+1, BORDER_CONSTANT, 0);
+
+    uint8_t *input;
+    float *output;
+ 
+    input  = (uint8_t*)malloc(sizeof(uint8_t) * N);
+    output = (float*)malloc(sizeof(float) * N);
+
+    // Initialize the input array
+    for (int r = 0; r < padded.rows; r++)
+        for (int c = 0; c < padded.cols; c++) 
+            input[r * padded.cols + c] = padded.at<uint8_t>(r, c);
+    
+    auto sum = 0;
+    for (auto i = 0u; i < benchmark_trials; ++i)
+    {
+        /* 0 the output array */
+        for (int r = 0; r < cols; r++)
+            for (int c = 0; c < rows; c++) 
+                output[r * cols + c] = 0.0;
+
+        uint8_t *dev_input;
+        float *dev_output;
+        cudaMalloc((void**)&dev_input, sizeof(uint8_t) * N);
+        cudaMalloc((void**)&dev_output, sizeof(float) * N);
+        cudaMemcpy(dev_input, input, sizeof(uint8_t) * N, cudaMemcpyHostToDevice);
+
+        VERS::sobel<<< 1, pixels_per_block >>>(dev_input, dev_output, padded.rows, padded.cols, rows, cols);
+
+        cudaMemcpy( output, dev_output, sizeof(float) * N, cudaMemcpyDeviceToHost );
+
+        for (int j = 0; j < 32; j++) {
+            for (int i = 0; i < 32; i++) {
+                std::cout << output[j*cols+i] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        cudaFree(dev_input);
+        cudaFree(dev_output);
+
+        sum += output[1];
+    }
+    
+    if(display) imshow("out.jpg", report3::GPUBaseline::postprocessing(output, rows, cols));
     std::cout << "END ITER: " << sum << std::endl;
     return sum;
 }
@@ -171,10 +164,11 @@ int gpu_runner(std::string file_name="images/rgb1.jpg", uint benchmark_trials = 
 
 int main(int argc, char **argv)
 {
+    printf("Test");
     auto sum = 0;
     auto const benchmark_trials = 10u;
     bool const display_outputs = false;
 
-    gpu_runner("rgb1.jpg", benchmark_trials, true);
+    gpu_runner("rgb1.jpg", 1, true);
     waitKey(0);
 }
