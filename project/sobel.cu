@@ -117,7 +117,7 @@ namespace GPGPU {
         size_t gpu_input_size = sizeof(uint8_t) * GPU_INPUT.rows * GPU_INPUT.cols;
 
         float *output = zeroed_array<float>(rows, cols);;
-        
+
         dim3 pixels_per_block(32, 16); // max 512, keep divisible by 32.
         dim3 num_blocks(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
         /**
@@ -128,19 +128,24 @@ namespace GPGPU {
         string implementation;
         switch(version) {
             case 0: // base
-            dev_func = base::sobel;
-            implementation = base::impl;
-            break;
+                dev_func = base::sobel;
+                implementation = base::impl;
+                break;
             case 1: // fastsqrt
-            dev_func = fastsqrt::sobel;
-            implementation = fastsqrt::impl;
-            break;
+                dev_func = fastsqrt::sobel;
+                implementation = fastsqrt::impl;
+                break;
+            case 2: // fastsqrt
+                dev_func = fastsqrt::sobel;
+                implementation = fastsqrt::impl + "_BLOCKSIZE(1,1)";
+                pixels_per_block = dim3(1,1);
+                num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
+                break;
             default: // base
-            dev_func = base::sobel;
-            implementation = base::impl;
+                dev_func = base::sobel;
+                implementation = base::impl;
             break;
         }
-
         // ghost value and stopwatch
         auto sum = 0.0;
         int elapsed_time = 0; 
@@ -208,12 +213,13 @@ int main(int argc, char **argv)
      */
     auto gpu_base = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
     auto gpu_fastsqrt = GPGPU::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
-    auto base_sqrt = BASE::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
-    auto base_fastsqrt = BASE::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
+    auto gpu_fastsqrt2 = GPGPU::runner(num_trials, INPUT_IMAGE, 2, write_outputs);
+    // auto base_sqrt = BASE::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
+    // auto base_fastsqrt = BASE::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
 
     printf("\n\nSpeedups:\n");
     show_speedup(gpu_base, gpu_fastsqrt);
-    show_speedup(base_sqrt, base_fastsqrt);
-    show_speedup(base_fastsqrt, gpu_fastsqrt);
+    // show_speedup(base_sqrt, base_fastsqrt);
+    // show_speedup(base_fastsqrt, gpu_fastsqrt);
 
 }
