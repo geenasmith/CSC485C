@@ -189,11 +189,6 @@ namespace GPGPU {
 
 int main(int argc, char **argv)
 {
-    // if (argc < 4) {
-    //     printf("USAGE: ./sobel [image] [num_trials] [test_to_run] [subtest_if_any]");
-    //     printf("0: all\t1: fast_uint8\t2: simd\t3: omp\t4: simt");
-    //     return 1;
-    // }
     string file_name = argv[1];
 
     printf("SOBEL Test Case Runner\n");
@@ -218,7 +213,7 @@ int main(int argc, char **argv)
 
     printf("\n\nSpeedups:\n");
     show_speedup(gpu_base, gpu_fastsqrt);
+    show_speedup(base_sqrt, base_fastsqrt);
     show_speedup(base_fastsqrt, gpu_fastsqrt);
 
-    waitKey(0);
 }
