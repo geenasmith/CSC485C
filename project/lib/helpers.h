@@ -9,8 +9,19 @@ using namespace std;
 
 string OUTPUT_DIR = "outputs/";
 
+typedef struct {
+    float avg_time;
+    string name;
+    int rows;
+    int cols;
+} ResultData;
+
+void show_speedup(ResultData a, ResultData b) {
+    printf("%s to %s speedup: %fx\n", b.name.c_str(), a.name.c_str(), a.avg_time / b.avg_time);
+}
+
 void print_log(const string title, const int duration_ms, const int trials, const int rows, const int cols) {
-    printf("%s (%d x %d): %f us", title, cols, rows, duration_ms / static_cast<float>(trials));
+    printf("%s (%d x %d): %f us\n", title.c_str(), cols, rows, duration_ms / static_cast<float>(trials));
 }
 
 void output_time(std::string name, std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end, uint trials, int h, int w) {
