@@ -7,6 +7,7 @@
 #include <string>
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+#include <stdlib.h>
 
 #include "lib/helpers.h"
 #include "lib/base.cpp"
@@ -99,6 +100,7 @@ namespace GPGPU {
             }
         }
     }
+
     namespace sharedmemory {
         string impl = prefix + "_sharedmemory";
             
@@ -142,7 +144,7 @@ namespace GPGPU {
      * Runner runs a set number of benchmarks, and returns the average runtime in microseconds (us)
      * the input image is always a CV_8UC1, any conversions need to be handled by the runner.
      */
-    auto runner(const int trials, const Mat INPUT_IMAGE, const int version, bool write_output_image) {
+    auto runner(const int trials, const Mat INPUT_IMAGE, const int version, bool write_output_image, const int block_x = 32, const int block_y = 16) {
         int rows = INPUT_IMAGE.rows;
         int cols = INPUT_IMAGE.cols;
         int N = rows * cols;
@@ -160,7 +162,7 @@ namespace GPGPU {
          * Default block size is manually found optimal for a RTX 3080. 
          * Cases 1-7 list attempted blocksizes using the baseline implementation.
          */
-        dim3 pixels_per_block(32, 16); // max 512, keep divisible by 32.
+        dim3 pixels_per_block(block_x, block_y); // max 512, keep divisible by 32.
         dim3 num_blocks(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
         /**
          * This logic allows switching implementation namespaces based on the "version" flag
@@ -170,58 +172,15 @@ namespace GPGPU {
         ostringstream implementation_stream;
         string blocksize;
         switch(version) {
-        case 0: // base, blocksize (1,1)
-            pixels_per_block = dim3(1,1);
+        case 0: // base
             implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
             dev_func = base::sobel;
             break;
-        case 1: // base, blocksize (32,1)
-            pixels_per_block = dim3(32,1);
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 2: // base, blocksize (1,32) (column major, testing warp bands)
-            pixels_per_block = dim3(1,32);
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 3: // base, blocksize (32,2)
-            pixels_per_block = dim3(32,2);
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 4: // base, blocksize (22,22)
-            pixels_per_block = dim3(22,22);
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 5: // base, blocksize (23,22) 
-            pixels_per_block = dim3(23,22) ;
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 6: // base, blocksize (32,32) 1024 max blocks attempt
-            pixels_per_block = dim3(32,32);
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 7: // base (defaults to 32,16 if no above cases called)
-            implementation_stream << base::impl;
-            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
-            dev_func = base::sobel;
-            break;
-        case 8: // fastsqrt
+        case 1: // fastsqrt
             dev_func = fastsqrt::sobel;
             implementation_stream << fastsqrt::impl;
             break;
-        case 9: // sharedmemory
+        case 2: // sharedmemory
             dev_func = sharedmemory::sobel;
             implementation_stream << sharedmemory::impl;
             break;
@@ -284,36 +243,59 @@ namespace GPGPU {
 
 int main(int argc, char **argv)
 {
-    string file_name = argv[1];
-
+    if (argc < 3) {
+        printf("USAGE: ./sobel NUM_TRIALS IMAGE_PATH [cpu|gpu] [test_case_number]\n");
+        return 1;
+    }
+    auto num_trials = atoi(argv[1]);
+    string file_name = argv[2];
+    bool write_outputs = true;
     printf("SOBEL Test Case Runner\n");
 	cudaDeviceProp props;
 	cudaGetDeviceProperties(&props, 0);
     printf("GPGPU: %s, CUDA %d.%d\n", props.name, props.major, props.minor);
     
     Mat INPUT_IMAGE = imread(file_name, IMREAD_GRAYSCALE);
-
-    bool write_outputs = true;
-    int num_trials = 10;
-
     printf("BEGINNING %d TRIALS ON %s(%dx%d):\n\n", num_trials, file_name.c_str(), INPUT_IMAGE.cols, INPUT_IMAGE.rows);
 
     /*
      * comment out test cases to ignore during a run, or use the switch case argument to run a specific from command line.
      */
+    if (argc >= 5) {
+        string t = argv[3];
+        if (t.compare("gpu") == 0) {
+            auto a = atoi(argv[4]);
+            if (argc == 7) {
+                GPGPU::runner(num_trials, INPUT_IMAGE, a, write_outputs, atoi(argv[5]), atoi(argv[6]));
+            } else {
+                GPGPU::runner(num_trials, INPUT_IMAGE, a, write_outputs);
+            }
+        } else if (t.compare("cpu") == 0) {
+            auto a = atoi(argv[4]);
+            BASE::runner(num_trials, INPUT_IMAGE, a, write_outputs);
+        } else {
+            printf("Specify gpu or cpu\nUSAGE: ./sobel NUM_TRIALS IMAGE_PATH [cpu|gpu] [test_case_number]\n");
+            return 1;
+        }
+    } else {
+        printf("USAGE: ./sobel NUM_TRIALS IMAGE_PATH [cpu|gpu] [test_case_number]\n");
+        printf("Not enough args, running all:\n");
+        auto gpu_base_1_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 1, 1);
+        auto gpu_base_32_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 1);
+        auto gpu_base_32_2 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 2);
+        auto gpu_base_32_4 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 4);
+        auto gpu_base_32_8 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 8);
+        auto gpu_base_32_16 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 16);
+        auto gpu_base_32_32 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 32);
+        auto gpu_base_22_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 22, 22);
+        auto gpu_base_23_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 1, write_outputs, 23, 22);
+        auto gpu_fastsqrt = GPGPU::runner(num_trials, INPUT_IMAGE, 8, write_outputs);
+        auto gpu_base_sharedmem = GPGPU::runner(num_trials, INPUT_IMAGE, 9, write_outputs);
+        auto base_sqrt = BASE::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
+        auto base_fastsqrt = BASE::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
+    }
 
-    auto gpu_base_1_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
-    auto gpu_base_32_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
-    auto gpu_base_1_32 = GPGPU::runner(num_trials, INPUT_IMAGE, 2, write_outputs);
-    auto gpu_base_32_2 = GPGPU::runner(num_trials, INPUT_IMAGE, 3, write_outputs);
-    auto gpu_base_22_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 4, write_outputs);
-    auto gpu_base_23_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 5, write_outputs);
-    auto gpu_base_32_32 = GPGPU::runner(num_trials, INPUT_IMAGE, 6, write_outputs);
-    auto gpu_base_32_16 = GPGPU::runner(num_trials, INPUT_IMAGE, 7, write_outputs);
-    auto gpu_fastsqrt = GPGPU::runner(num_trials, INPUT_IMAGE, 8, write_outputs);
-    auto gpu_base_sharedmem = GPGPU::runner(num_trials, INPUT_IMAGE, 9, write_outputs);
-    auto base_sqrt = BASE::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
-    auto base_fastsqrt = BASE::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
+
 
     // printf("\n\nSpeedups:\n");
     // show_speedup(gpu_base, gpu_fastsqrt);
