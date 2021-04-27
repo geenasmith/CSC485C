@@ -114,7 +114,7 @@ namespace GPGPU {
         __global__ void sobel(uint8_t* input, float* output, int p_rows, int p_cols, int rows, int cols)
         {
             // given a padding
-            __shared__ uint8_t tile[18][34]; // 612 bytes/positions. 16 rows + apron, 32 cols + apron
+            __shared__ uint8_t tile[6][34]; // 612 bytes/positions. 16 rows + apron, 32 cols + apron
             int x = threadIdx.x + blockIdx.x * blockDim.x; // output x & y
             int y = threadIdx.y + blockIdx.y * blockDim.y;
             
@@ -123,7 +123,7 @@ namespace GPGPU {
 
             tile[ty][tx] = input[y * p_cols + x];
 
-            if (threadIdx.x == 0 || threadIdx.y == 0 || threadIdx.x == 31 || threadIdx.y == 15) { //first/last threads
+            if (threadIdx.x == 0 || threadIdx.y == 0 || threadIdx.x == 31 || threadIdx.y == 5) { //first/last threads
                 tile[threadIdx.y][threadIdx.x] = 0.0;
             }
 
@@ -191,7 +191,7 @@ namespace GPGPU {
             implementation_stream << fastsqrt::impl;
             break;
         case 2: // sharedmemory, 32x16
-            pixels_per_block = dim3(32, 16);
+            pixels_per_block = dim3(32, 4);
             num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
             dev_func = sharedmemory::sobel;
             implementation_stream << sharedmemory::impl;
