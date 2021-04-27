@@ -28,11 +28,11 @@ int main()
         441,
         220};
 
-    for (int i = 1; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
 
         Mat resized_image;
         resize(input_image, resized_image, Size(s[i],s[i]), 0, 0);
-        string name = format("sampleset/earth-%d-%d.jpg", resized_image.cols, resized_image.rows);
+        string name = format("images/earth_set/earth-%d-%d.jpg", resized_image.cols, resized_image.rows);
         cout << "output: "<<name<< " "<< input_image.cols << "x" << input_image.rows << endl;
         imwrite(name, resized_image);
 

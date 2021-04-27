@@ -103,39 +103,49 @@ namespace GPGPU {
 
     namespace sharedmemory {
         string impl = prefix + "_sharedmemory";
-            
+
+        // NOTE: This kernel is specifically designed for a blocksize of 32x16!
+        // This grants 1024B per block of shared memory
+
         /*
         * Takes a 1d array for input and output, as well as the corresponding dimensions.
         * Calculates and updates the output array at position [y][x].
         */
         __global__ void sobel(uint8_t* input, float* output, int p_rows, int p_cols, int rows, int cols)
         {
-            int x = threadIdx.x + blockIdx.x * blockDim.x;
+            // given a padding
+            __shared__ uint8_t tile[18][34]; // 612 bytes/positions. 16 rows + apron, 32 cols + apron
+            int x = threadIdx.x + blockIdx.x * blockDim.x; // output x & y
             int y = threadIdx.y + blockIdx.y * blockDim.y;
-            int r0 = y * p_cols;
-            int r1 = (y + 1) * p_cols;
-            int r2 = (y + 2) * p_cols;
+            
+            int tx = threadIdx.x + 1; // tile x
+            int ty = threadIdx.y + 1; // tile y
 
-            /**
-            * The input and output arrays are offset by 1 pixel. 
-            * So when computing output at (0,0) we are centered on the input pixel (1,1) due to padding
-            */
+            tile[ty][tx] = input[y * p_cols + x];
+
+            if (threadIdx.x == 0 || threadIdx.y == 0 || threadIdx.x == 31 || threadIdx.y == 15) { //first/last threads
+                tile[threadIdx.y][threadIdx.x] = 0.0;
+            }
+
+            /* loads to shared memory are done, now do computation */
+            __syncthreads();
+
             if (x < cols && y < rows) {
-                float mag_x = input[r0 + x]
-                            - input[r0 + x + 2]
-                            + input[r1 + x] * 2
-                            - input[r1 + x + 2] * 2
-                            + input[r2 + x]
-                            - input[r2 + x + 2];
+                float mag_x = tile[ty - 1][tx - 1]
+                            + tile[ty    ][tx - 1] * 2
+                            + tile[ty + 1][tx - 1]
+                            - tile[ty - 1][tx + 1]
+                            - tile[ty    ][tx + 1] * 2
+                            - tile[ty + 1][tx + 1];
 
-                float mag_y = input[r0 + x]
-                            + input[r0 + x + 1] * 2
-                            + input[r0 + x + 2]
-                            - input[r2 + x]
-                            - input[r2 + x + 1] * 2
-                            - input[r2 + x + 2];
+                float mag_y = tile[ty - 1][tx - 1]
+                            + tile[ty - 1][tx] * 2
+                            + tile[ty - 1][tx + 1]
+                            - tile[ty + 1][tx - 1]
+                            - tile[ty + 1][tx] * 2
+                            - tile[ty + 1][tx + 1];
 
-                output[y*cols + x] = sqrt(mag_x * mag_x + mag_y * mag_y);
+                output[y * cols + x] = sqrt(mag_x * mag_x + mag_y * mag_y);
             }
         }
     }
@@ -180,7 +190,9 @@ namespace GPGPU {
             dev_func = fastsqrt::sobel;
             implementation_stream << fastsqrt::impl;
             break;
-        case 2: // sharedmemory
+        case 2: // sharedmemory, 32x16
+            pixels_per_block = dim3(32, 16);
+            num_blocks = dim3(ceil(cols / pixels_per_block.x), ceil(rows / pixels_per_block.y));
             dev_func = sharedmemory::sobel;
             implementation_stream << sharedmemory::impl;
             break;
@@ -192,7 +204,6 @@ namespace GPGPU {
 
         implementation_stream << "_BS(" << unsigned(pixels_per_block.x) << ", " << unsigned(pixels_per_block.y) << ")";
         string implementation = implementation_stream.str();
-
 
         uint8_t *dev_input;
         float *dev_output;
@@ -279,7 +290,7 @@ int main(int argc, char **argv)
         }
     } else {
         printf("USAGE: ./sobel NUM_TRIALS IMAGE_PATH [cpu|gpu] [test_case_number]\n");
-        printf("Not enough args, running all:\n");
+        printf("Not enough args, running presets:\n");
         auto gpu_base_1_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 1, 1);
         auto gpu_base_32_1 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 1);
         auto gpu_base_32_2 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 2);
@@ -288,14 +299,12 @@ int main(int argc, char **argv)
         auto gpu_base_32_16 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 16);
         auto gpu_base_32_32 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 32, 32);
         auto gpu_base_22_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 22, 22);
-        auto gpu_base_23_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 1, write_outputs, 23, 22);
-        auto gpu_fastsqrt = GPGPU::runner(num_trials, INPUT_IMAGE, 8, write_outputs);
-        auto gpu_base_sharedmem = GPGPU::runner(num_trials, INPUT_IMAGE, 9, write_outputs);
+        auto gpu_base_23_22 = GPGPU::runner(num_trials, INPUT_IMAGE, 0, write_outputs, 23, 22);
+        auto gpu_fastsqrt = GPGPU::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
+        auto gpu_base_sharedmem = GPGPU::runner(num_trials, INPUT_IMAGE, 2, write_outputs);
         auto base_sqrt = BASE::runner(num_trials, INPUT_IMAGE, 0, write_outputs);
         auto base_fastsqrt = BASE::runner(num_trials, INPUT_IMAGE, 1, write_outputs);
     }
-
-
 
     // printf("\n\nSpeedups:\n");
     // show_speedup(gpu_base, gpu_fastsqrt);
