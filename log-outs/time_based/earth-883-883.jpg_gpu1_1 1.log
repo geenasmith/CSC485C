@@ -1,0 +1,5 @@
+SOBEL Test Case Runner
+GPGPU: NVIDIA GeForce RTX 3080, CUDA 8.6
+BEGINNING 1000 TRIALS ON images/earth_set/earth-883-883.jpg(883x883):
+
+GPGPU_fastsqrt_BS(1, 1) (883 x 883): 527.077026 us
